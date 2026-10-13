@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#f2f0e9" />
+<title>ENGINELAB — Physics-calibrated Procedural Engine Acoustics</title>
+<style>
+:root{
+  --bg:#f2f0e9;--paper:#f7f5ef;--ink:#11110f;--muted:#77756e;--line:rgba(17,17,15,.15);
+  --line-strong:rgba(17,17,15,.3);--accent:#ff4b1f;--accent-soft:rgba(255,75,31,.13);--dark:#11110f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  --grotesk:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --shadow:0 16px 50px rgba(20,18,13,.06);
+}
+*{box-sizing:border-box} html{background:var(--bg);color:var(--ink)} body{margin:0;min-height:100vh;font-family:var(--grotesk);background:var(--bg);overflow-x:hidden}
+button,input,select{font:inherit;color:inherit} button{cursor:pointer} button:disabled{cursor:not-allowed;opacity:.42}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::selection{background:var(--accent);color:#fff}
+.grain{position:fixed;inset:0;z-index:999;pointer-events:none;opacity:.09;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.3'/%3E%3C/svg%3E")}
+.app{min-height:100vh}.topbar{height:66px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 20px;position:sticky;top:0;z-index:100;background:rgba(242,240,233,.92);backdrop-filter:blur(18px)}
+.brand{font-size:20px;line-height:1;font-weight:800;letter-spacing:-.055em}.brand span{font-weight:400}.engine-state{justify-self:center;display:flex;align-items:center;gap:9px;font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase}.status-dot{width:7px;height:7px;border-radius:50%;background:#8c8a84;box-shadow:0 0 0 4px rgba(0,0,0,.035)}.status-dot.running{background:var(--accent);box-shadow:0 0 0 5px var(--accent-soft),0 0 16px rgba(255,75,31,.55)}
+.top-actions{justify-self:end;display:flex;gap:4px;align-items:center}.top-actions button,.ghost-btn,.mini-btn{border:0;background:transparent;padding:9px 10px;font-size:11px;border-radius:3px}.top-actions button:hover,.ghost-btn:hover,.mini-btn:hover{background:rgba(17,17,15,.05)}.pill-btn{border:1px solid var(--line)!important;border-radius:999px!important;padding-inline:12px!important}
+.presetbar{min-height:44px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:7px 20px;overflow:auto;scrollbar-width:none}.presetbar::-webkit-scrollbar{display:none}.preset-label{font:9px var(--mono);letter-spacing:.12em;color:var(--muted);margin-right:7px;white-space:nowrap}.preset{height:28px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 10px;font:9px var(--mono);letter-spacing:.03em;white-space:nowrap;transition:.18s ease}.preset:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.workspace{min-height:calc(100vh - 110px);display:grid;grid-template-columns:minmax(310px,360px) minmax(540px,1fr) minmax(320px,370px)}.panel{padding:26px 22px 22px;background:rgba(248,246,240,.54)}.build-panel{border-right:1px solid var(--line)}.run-panel{border-left:1px solid var(--line)}
+.eyebrow{margin:0;color:var(--muted);font:9px var(--mono);letter-spacing:.14em;text-transform:uppercase}.panel h1,.panel h2{font-size:34px;line-height:.94;letter-spacing:-.06em;margin:7px 0 10px;font-weight:650}.panel h2{font-size:32px}.lede{margin:0;max-width:318px;color:#5d5a54;font-size:12px;line-height:1.55}
+.control-section{border-top:1px solid var(--line);padding-top:17px;margin-top:20px}.control-section.flush{border-top:0;padding-top:0}.section-title,.control-label{font:9px var(--mono);letter-spacing:.07em;text-transform:uppercase}.control-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;color:#514f49}.control-label output{color:var(--ink);font-weight:600}.seg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.seg-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.seg-grid button{min-height:35px;border:1px solid var(--line);background:transparent;border-radius:3px;padding:7px 9px;text-align:left;font-size:10px;line-height:1.15;transition:.15s ease}.seg-grid button:hover{border-color:var(--line-strong)}.seg-grid button.active{background:var(--dark);border-color:var(--dark);color:#f6f3eb}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}.stack{display:grid;gap:15px}
+input[type=range]{appearance:none;width:100%;height:16px;background:transparent;margin:0}input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(to right,var(--ink) 0 var(--fill,50%),rgba(17,17,15,.14) var(--fill,50%) 100%)}input[type=range]::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1.5px solid var(--ink);margin-top:-5px}input[type=range]::-moz-range-track{height:2px;background:rgba(17,17,15,.14)}input[type=range]::-moz-range-progress{height:2px;background:var(--ink)}input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--bg);border:1.5px solid var(--ink)}
+select{width:100%;height:36px;border:1px solid var(--line);border-radius:3px;background:transparent;padding:0 9px;font:10px var(--mono)}
+.center-stage{min-width:0;padding:18px 24px 24px;display:grid;grid-template-rows:auto minmax(280px,1fr) auto auto;gap:14px}.stage-meta{display:flex;justify-content:space-between;gap:12px;font:9px var(--mono);letter-spacing:.07em;color:#5d5b55;text-transform:uppercase}.engine-wrap{min-height:340px;position:relative;border-bottom:1px solid var(--line);display:grid;place-items:center;overflow:hidden}.engine-wrap::before{content:"";position:absolute;inset:12% 10%;background:radial-gradient(circle at center,rgba(255,75,31,.04),transparent 58%);pointer-events:none}#engineCanvas{width:100%;height:100%;min-height:340px;display:block}.engine-caption{position:absolute;left:2px;bottom:12px;font:8px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.data-strip{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);background:rgba(255,255,255,.12)}.datum{min-height:54px;padding:9px 11px;border-right:1px solid var(--line)}.datum:last-child{border-right:0}.datum span{display:block;font:8px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.datum strong{display:block;margin-top:8px;font-size:14px;font-weight:550;letter-spacing:-.025em}.datum strong small{font:8px var(--mono);color:var(--muted);margin-left:3px}
+.instruments{display:grid;grid-template-columns:minmax(250px,.9fr) minmax(320px,1.1fr);gap:14px}.gauge-card,.viz-card,.dyno-card{border-top:1px solid var(--line);padding-top:12px;min-width:0}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font:8px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.card-head b{font-weight:500;color:var(--ink)}
+.tach{height:180px;position:relative}#tachCanvas,#scopeCanvas,#spectrumCanvas,#dynoCanvas{width:100%;height:100%;display:block}.shift-light{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:rgba(17,17,15,.13);transition:.08s}.shift-light.on{background:var(--accent);box-shadow:0 0 0 6px var(--accent-soft),0 0 18px rgba(255,75,31,.6)}.rpm-big{position:absolute;inset:auto 0 10px;text-align:center;font:34px var(--mono);letter-spacing:-.07em}.rpm-big small{display:block;font:8px var(--mono);letter-spacing:.15em;color:var(--muted)}
+.scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.scope-box{height:84px;position:relative;border:1px solid var(--line);background:rgba(255,255,255,.1)}.scope-box label{position:absolute;left:8px;top:7px;z-index:1;font:7px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.dyno-card{height:170px}.dyno-wrap{height:142px;position:relative}
+.start-btn{width:100%;height:56px;border:0;background:var(--dark);color:white;display:flex;align-items:center;justify-content:center;gap:9px;font:10px var(--mono);letter-spacing:.1em;transition:.2s}.start-btn.running{background:var(--accent)}.start-btn:hover{filter:brightness(.96)}
+.throttle-section{margin-top:18px}.throttle-head{display:flex;justify-content:space-between;margin-bottom:9px;font:9px var(--mono);letter-spacing:.09em}.throttle-pad{height:208px;border:1px solid var(--line);position:relative;overflow:hidden;touch-action:none;user-select:none;background:linear-gradient(rgba(17,17,15,.018),transparent)}.throttle-fill{position:absolute;inset:auto 0 0;height:0;background:linear-gradient(180deg,rgba(255,75,31,.05),rgba(255,75,31,.22));transition:height .045s linear}.throttle-line{position:absolute;left:10px;right:10px;bottom:0;height:2px;background:var(--accent);box-shadow:0 0 16px rgba(255,75,31,.4)}.throttle-hint{position:absolute;right:9px;bottom:7px;font:7px var(--mono);letter-spacing:.07em;color:rgba(17,17,15,.36)}.blip-btn,.action-btn{width:100%;height:36px;border:1px solid var(--line);background:transparent;margin-top:6px;font:9px var(--mono);letter-spacing:.08em}.blip-btn:hover,.action-btn:hover{border-color:var(--line-strong);background:rgba(17,17,15,.025)}
+.mini-control{display:grid;grid-template-columns:74px 1fr 26px;gap:7px;align-items:center;margin:9px 0;font-size:9px}.mini-control b{font:8px var(--mono);text-align:right;font-weight:500}.listener-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.listener-grid button{height:34px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.listener-grid button.active{background:var(--dark);color:#fff;border-color:var(--dark)}
+.run-stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);margin-top:14px}.run-stats div{padding:9px;border-right:1px solid var(--line)}.run-stats div:last-child{border-right:0}.run-stats span{display:block;font:7px var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.run-stats strong{display:block;margin-top:6px;font-size:13px;font-weight:550}.gear-row{display:grid;grid-template-columns:1fr 74px;gap:6px;margin-top:8px}.gear-row select{height:34px}.toggle-btn{height:34px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.toggle-btn.active{background:var(--dark);color:white}
+.ab-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px}.ab-grid button{height:32px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.ab-grid button.active{background:var(--accent);border-color:var(--accent);color:white}.utility-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.utility-grid button{height:34px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.utility-grid button.active{background:var(--dark);color:white}.rec-btn.recording{background:var(--accent)!important;border-color:var(--accent)!important;color:white}.keyboard-note{margin-top:16px;font:7.5px var(--mono);line-height:1.6;color:var(--muted)}.drive-keys{display:grid;grid-template-columns:1fr 1.45fr 1fr 1fr;gap:5px;margin-top:8px}.keycap{border:1px solid var(--line);border-bottom-color:var(--line-strong);border-radius:4px;background:rgba(255,255,255,.14);min-height:40px;padding:6px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:8px var(--mono);letter-spacing:.05em;text-transform:uppercase;transition:.08s}.keycap b{font-size:11px;font-weight:650;color:var(--ink)}.keycap span{font-size:6.5px;color:var(--muted)}.keycap.active{background:var(--dark);border-color:var(--dark);color:white;transform:translateY(1px)}.keycap.active b,.keycap.active span{color:white}.keycap.brake.active{background:var(--accent);border-color:var(--accent)}
+.physics-note{margin-top:7px;padding:8px 9px;border:1px solid var(--line);font:8px var(--mono);line-height:1.45;color:var(--muted);background:rgba(255,255,255,.12)}.physics-note.warn{border-color:rgba(255,75,31,.55);color:#a42d12;background:var(--accent-soft)}.physics-note strong{color:var(--ink);font-weight:600}.limiter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.limiter-grid button{height:34px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.limiter-grid button.active{background:var(--dark);color:white;border-color:var(--dark)}.audio-banner{display:none;margin-top:12px;border:1px solid rgba(255,75,31,.3);background:var(--accent-soft);padding:9px 10px;font:8px var(--mono);line-height:1.45}.audio-banner.show{display:block}.flyby-btn{width:100%;height:38px;border:1px solid var(--line);background:transparent;font:9px var(--mono);letter-spacing:.08em;transition:.18s}.flyby-btn:hover{border-color:var(--line-strong);background:rgba(17,17,15,.025)}.flyby-btn.active{background:var(--accent);border-color:var(--accent);color:white}.flyby-readout{margin-top:8px;font:8px var(--mono);line-height:1.5;color:var(--muted);min-height:24px}.flyby-card{border-top:1px solid var(--line);padding-top:12px;min-width:0}.flyby-shell{display:grid;grid-template-columns:minmax(280px,1.25fr) minmax(260px,.75fr);gap:14px}.flyby-track{height:132px;border:1px solid var(--line);position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(17,17,15,.012))}.flyby-track::before{content:"";position:absolute;left:6%;right:6%;top:50%;height:1px;background:rgba(17,17,15,.22)}.flyby-track::after{content:"MIC";position:absolute;left:50%;top:calc(50% + 12px);transform:translateX(-50%);font:7px var(--mono);letter-spacing:.08em;color:var(--muted)}.flyby-mic{position:absolute;left:50%;top:calc(50% - 4px);width:8px;height:8px;border:1px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 5px var(--accent-soft)}.flyby-bike{position:absolute;width:16px;height:6px;border-radius:999px;background:var(--ink);transform:translate(-50%,-50%);transition:opacity .12s}.flyby-bike::after{content:"";position:absolute;right:-4px;top:2px;width:4px;height:2px;background:var(--accent)}.flyby-bike.near{background:var(--accent);box-shadow:0 0 12px rgba(255,75,31,.28)}.flyby-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.flyby-controls .wide{grid-column:1/-1}.flyby-bike-selects{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.flyby-bike-selects select{height:34px;border:1px solid var(--line);background:transparent;border-radius:3px;padding:0 7px;font:8px var(--mono);min-width:0}.shift-indicator{display:inline-flex;align-items:center;gap:5px;color:var(--muted)}.shift-indicator.active{color:var(--accent)}.env-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}.env-grid button{height:32px;border:1px solid var(--line);background:transparent;border-radius:3px;font:8px var(--mono)}.env-grid button.active{background:var(--dark);border-color:var(--dark);color:white}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,12px);background:var(--dark);color:white;padding:10px 13px;font-size:10px;opacity:0;pointer-events:none;transition:.2s;z-index:1500;box-shadow:var(--shadow)}.toast.show{opacity:1;transform:translate(-50%,0)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1260px){.workspace{grid-template-columns:330px 1fr}.run-panel{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:18px}.run-panel>.panel-heading{grid-column:1}.run-panel>.start-btn{grid-column:1}.throttle-section{grid-column:2;grid-row:1/span 3;margin-top:0}.run-panel>.control-section:nth-of-type(2){grid-column:3;grid-row:1;margin-top:0;padding-top:0;border-top:0}.run-panel>.control-section:nth-of-type(3){grid-column:3;grid-row:2}.run-panel>.control-section:nth-of-type(4){grid-column:1;grid-row:3}.keyboard-note{grid-column:3}.audio-banner{grid-column:1}}
+@media(max-width:980px){.flyby-shell{grid-template-columns:1fr}.flyby-track{height:118px}}
+@media(max-width:860px){.topbar{grid-template-columns:1fr auto}.engine-state{display:none}.top-actions .hide-small{display:none}.workspace{display:block}.build-panel,.run-panel{border:0;border-bottom:1px solid var(--line)}.run-panel{display:block}.center-stage{padding-inline:16px}.engine-wrap{min-height:320px}.instruments{grid-template-columns:1fr}.scope-grid{grid-template-columns:1fr 1fr}.run-panel>.control-section{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}.throttle-section{margin-top:18px}.data-strip{grid-template-columns:repeat(2,1fr)}.datum{border-bottom:1px solid var(--line)}.datum:nth-child(2n){border-right:0}.datum:last-child{grid-column:1/-1;border-bottom:0}}
+@media(max-width:520px){.topbar{padding-inline:13px}.presetbar{padding-inline:13px}.top-actions button{padding:8px}.top-actions .hide-xs{display:none}.panel{padding-inline:16px}.center-stage{padding:14px 12px 20px}.panel h1,.panel h2{font-size:30px}.two-col{grid-template-columns:1fr}.scope-grid{grid-template-columns:1fr}.scope-box{height:90px}.listener-grid{grid-template-columns:1fr}.data-strip{display:grid}.engine-wrap{min-height:270px}#engineCanvas{min-height:270px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.001ms!important;animation-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">ENGINE<span>LAB</span></div>
+    <div class="engine-state"><span id="statusDot" class="status-dot"></span><span id="engineState">ENGINE OFF</span></div>
+    <div class="top-actions">
+      <button id="randomBtn">Random bike</button><button id="resetBtn" class="hide-xs">Reset</button><button id="saveBtn" class="hide-small">Save</button><button id="loadBtn" class="hide-small">Load</button><button id="copyBtn" class="pill-btn">Copy setup</button>
+    </div>
+  </header>
+  <nav class="presetbar" aria-label="Bike presets"><span class="preset-label">BIKES</span><div id="presetButtons" style="display:flex;gap:6px"></div></nav>
+
+  <main class="workspace">
+    <aside class="panel build-panel">
+      <div class="panel-heading"><p class="eyebrow">01 / BIKE</p><h1>Choose the bike.</h1><p class="lede">Eleven specific motorcycles, each with its own firing cadence, drivetrain and acoustic calibration. Tune from the real bike instead of a generic engine family.</p></div>
+      <section class="control-section"><label class="control-label">Bike</label><div id="layoutGrid" class="seg-grid"></div></section>
+      <section class="control-section"><label class="control-label">Firing architecture</label><div id="crankGrid" class="seg-grid"></div></section>
+      <section class="control-section two-col">
+        <div><label class="control-label" for="bore">Bore <output id="boreVal"></output></label><input id="bore" type="range" min="50" max="120" step="0.1"></div>
+        <div><label class="control-label" for="stroke">Stroke <output id="strokeVal"></output></label><input id="stroke" type="range" min="35" max="115" step="0.1"></div>
+      </section>
+      <section class="control-section two-col">
+        <div><label class="control-label" for="compression">Compression <output id="compressionVal"></output></label><input id="compression" type="range" min="7.5" max="15.5" step="0.1"></div>
+        <div><label class="control-label" for="cam">Cam aggression <output id="camVal"></output></label><input id="cam" type="range" min="0" max="100" step="1"></div>
+      </section>
+      <section class="control-section two-col">
+        <div><label class="control-label" for="flywheel">Flywheel mass <output id="flywheelVal"></output></label><input id="flywheel" type="range" min="0" max="100" step="1"></div>
+        <div><label class="control-label" for="redline">Redline <output id="redlineVal"></output></label><input id="redline" type="range" min="5000" max="18000" step="50"><div id="redlineGuidance" class="physics-note"></div></div>
+      </section>
+      <section class="control-section"><label class="control-label">Limiter strategy</label><div id="limiterGrid" class="limiter-grid"><button data-limiter="fuel" class="active">HARD FUEL</button><button data-limiter="ignition">IGNITION CUT</button><button data-limiter="soft">SOFT</button></div></section>
+      <section class="control-section"><label class="control-label">Exhaust</label><div id="exhaustGrid" class="seg-grid"></div></section>
+      <section class="control-section two-col">
+        <div><label class="control-label" for="muffling">Muffling <output id="mufflingVal"></output></label><input id="muffling" type="range" min="0" max="100" step="1"></div>
+        <div><label class="control-label" for="intake">Intake length <output id="intakeVal"></output></label><input id="intake" type="range" min="0" max="100" step="1"></div>
+      </section>
+    </aside>
+
+    <section class="center-stage">
+      <div class="stage-meta"><span id="engineName">—</span><span id="powerEstimate">—</span></div><div id="referenceNote" class="physics-note">CALIBRATION —</div>
+      <div class="engine-wrap"><canvas id="engineCanvas" aria-label="Animated engine mechanism"></canvas><span class="engine-caption">TRUE CRANK PHASE · FIRING FLASH = COMBUSTION EVENT</span></div>
+      <div class="data-strip">
+        <div class="datum"><span>Displacement</span><strong id="ccReadout">—</strong></div><div class="datum"><span>Torque sim.</span><strong id="torqueReadout">—</strong></div><div class="datum"><span>Power sim.</span><strong id="hpReadout">—</strong></div><div class="datum"><span>Piston speed</span><strong id="pistonReadout">—</strong></div><div class="datum"><span>Firing rate</span><strong id="fireHzReadout">—</strong></div>
+      </div>
+      <div class="instruments">
+        <div class="gauge-card"><div class="card-head"><span>ENGINE SPEED</span><b id="gearBadge">N · 0 km/h</b></div><div class="tach"><canvas id="tachCanvas"></canvas><span id="shiftLight" class="shift-light"></span><div class="rpm-big"><span id="rpmReadout">0</span><small>RPM</small></div></div></div>
+        <div class="viz-card"><div class="card-head"><span>LIVE AUDIO</span><b id="audioModeBadge">AUDIO IDLE</b></div><div class="scope-grid"><div class="scope-box"><label>OSCILLOSCOPE</label><canvas id="scopeCanvas"></canvas></div><div class="scope-box"><label>FFT</label><canvas id="spectrumCanvas"></canvas></div></div></div>
+      </div>
+      <div class="dyno-card"><div class="card-head"><span>ESTIMATED DYNO</span><b>TORQUE / POWER · LIVE RPM MARKER</b></div><div class="dyno-wrap"><canvas id="dynoCanvas"></canvas></div></div>
+      <section class="flyby-card"><div class="card-head"><span>TRACKSIDE FLYBY</span><b id="flybySceneBadge">3-BIKE MIXED GRID</b></div><div class="flyby-shell"><div><div id="flybyTrack" class="flyby-track" aria-label="Flyby track visualization"><span class="flyby-mic"></span></div><div id="flybyReadout" class="flyby-readout">Choose up to three bikes · each has its own engine DSP, gearing, Doppler and propagation path</div></div><div class="flyby-controls"><button id="flybyBtn" class="flyby-btn wide">START MIXED FLYBY</button><div class="flyby-bike-selects"><select id="flybyBike1" aria-label="Flyby bike one"></select><select id="flybyBike2" aria-label="Flyby bike two"></select><select id="flybyBike3" aria-label="Flyby bike three"></select></div><div><label class="control-label" for="flybyCount">Bikes <output id="flybyCountVal"></output></label><input id="flybyCount" type="range" min="1" max="3" step="1"></div><div><label class="control-label" for="flybySpread">Grid gap <output id="flybySpreadVal"></output></label><input id="flybySpread" type="range" min="6" max="55" step="1"></div><div><label class="control-label" for="flybySpeed">Entry speed <output id="flybySpeedVal"></output></label><input id="flybySpeed" type="range" min="40" max="320" step="5"></div><div><label class="control-label" for="flybyOffset">Mic offset <output id="flybyOffsetVal"></output></label><input id="flybyOffset" type="range" min="4" max="30" step="1"></div></div></div></section>
+    </section>
+
+    <aside class="panel run-panel">
+      <div class="panel-heading"><p class="eyebrow">02 / RUN</p><h2>Hear it work.</h2><p class="lede">Combustion excites exhaust waveguides, intake resonance and mechanical orders independently, then a virtual listener changes the final perspective.</p></div>
+      <button id="startBtn" class="start-btn" aria-describedby="audioHelp">◉ <span>START ENGINE</span></button>
+      <div id="audioHelp" class="audio-banner" role="status">Audio is waiting for a user gesture. Press START ENGINE once to unlock Web Audio.</div>
+
+      <section class="throttle-section">
+        <div class="throttle-head"><span>THROTTLE</span><span id="throttlePct">0%</span></div>
+        <div id="throttlePad" class="throttle-pad" tabindex="0" role="slider" aria-label="Throttle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="throttleFill" class="throttle-fill"></div><div id="throttleLine" class="throttle-line"></div><span class="throttle-hint">DRAG · HOLD SPACE · ↑ / ↓</span></div>
+        <button id="blipBtn" class="blip-btn">BLIP THROTTLE</button>
+        <div class="run-stats"><div><span>Load</span><strong id="loadReadout">0%</strong></div><div><span>Gear</span><strong id="gearReadout">N</strong></div><div><span>Speed</span><strong id="speedReadout">0</strong></div></div>
+        <div class="gear-row"><select id="gearSelect" aria-label="Gear"><option value="0">Neutral</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="5">5th</option><option value="6">6th</option></select><button id="autoShiftBtn" class="toggle-btn active" aria-pressed="true">AUTO</button></div>
+        <div class="drive-keys" aria-label="Keyboard driving controls"><div id="keyDownshift" class="keycap"><b>Q</b><span>shift down</span></div><div id="keyThrottle" class="keycap"><b>SPACE</b><span>throttle</span></div><div id="keyUpshift" class="keycap"><b>E</b><span>shift up</span></div><div id="keyBrake" class="keycap brake"><b>S</b><span>brake</span></div></div>
+      </section>
+
+      <section class="control-section"><label class="control-label">Listener position</label><div id="listenerGrid" class="listener-grid"><button data-listener="tailpipe" class="active">TAILPIPE</button><button data-listener="trackside">TRACKSIDE</button><button data-listener="incar">IN-CAR</button></div></section>
+      <section class="control-section"><label class="control-label">Acoustic space</label><div id="reverbGrid" class="env-grid"><button data-reverb="dry">DRY</button><button data-reverb="garage">GARAGE</button><button data-reverb="track" class="active">OPEN TRACK</button><button data-reverb="tunnel">TUNNEL</button></div><div class="mini-control"><span>Reverb</span><input id="reverbAmount" type="range" min="0" max="100" step="1"><b id="reverbAmountVal"></b></div></section>
+      <section class="control-section"><label class="control-label">Trackside scene</label><div class="physics-note">Flyby controls are integrated into the centre stage. Choose up to three different bikes. Each flyby source runs its own engine model, RPM/gearing, shift events, propagation delay, Doppler, air loss and ground reflection.</div></section>
+      <section class="control-section"><label class="control-label">Sound mix</label><div class="mini-control"><span>Exhaust</span><input id="exhaustMix" type="range" min="0" max="100"><b id="exhaustMixVal"></b></div><div class="mini-control"><span>Intake</span><input id="intakeMix" type="range" min="0" max="100"><b id="intakeMixVal"></b></div><div class="mini-control"><span>Mechanical</span><input id="mechanicalMix" type="range" min="0" max="100"><b id="mechanicalMixVal"></b></div></section>
+      <section class="control-section"><label class="control-label">A / B compare</label><div class="ab-grid"><button id="snapA">SET A</button><button id="useA">A</button><button id="snapB">SET B</button><button id="useB">B</button></div></section>
+      <section class="control-section"><label class="control-label">I/O + capture</label><div class="utility-grid"><button id="recordBtn" class="rec-btn">REC WAV</button><button id="shareBtn">COPY LINK</button><button id="gamepadBtn">GAMEPAD</button><button id="midiBtn">MIDI</button></div></section>
+      <div class="keyboard-note">SPACE = throttle · Q = shift down · E = shift up · S = brake · R = restart · M = mute · [ / ] also shift<br>AudioWorklet is preferred; native-node fallback activates automatically if unavailable.</div>
+    </aside>
+  </main>
+</div>
+<div id="toast" class="toast"></div><div id="ariaLive" class="sr-only" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   ENGINELAB — single-file procedural engine acoustics lab
+   Modules: CONFIG / state / acoustics / simulation / render / UI
+   ========================================================= */
+const CONFIG={
+  appVersion:'7.0-sound-event-flyby',
+  audio:{master:.78,lookahead:.11,schedulerMs:24,fftSize:2048,workletPushHz:40},
+  sim:{riderMassKg:80,driverMassKg:80,airDensity:1.225,rollingCoeffBike:.015,rollingCoeffCar:.012,quickShiftCooldownMs:85,manualBikeCooldownMs:150,manualCarCooldownMs:280},
+  physics:{gammaExhaust:1.33,Rgas:287,airSound:343,ottoGamma:1.35},
+  render:{maxDpr:2,reducedFps:30},
+  defaults:{layout:'v4',crank:'rsv4',exhaust:'race',bore:81,stroke:53.32,compression:13.6,cam:76,flywheel:32,redline:13600,muffling:18,intake:38,exhaustMix:88,intakeMix:52,mechanicalMix:25,listener:'tailpipe',limiter:'fuel',reverbEnv:'track',reverbAmount:18,flybySpeed:170,flybyOffset:10,flybyCount:3,flybySpread:20,flybyBike1:'Aprilia RSV4',flybyBike2:'Yamaha R1',flybyBike3:'BMW S1000RR'}
+};
+/* Acoustic lengths are effective lengths, not literal header tape-measure lengths. They are documented as approximations in the delivery notes. */
+const EXHAUSTS={
+  stock:{label:'Stock',pipe:.86,collector:.58,reflection:.46,bright:.62,loss:.62},
+  race:{label:'Race system',pipe:.72,collector:.48,reflection:.72,bright:1.00,loss:.24},
+  short:{label:'Shorty',pipe:.42,collector:.30,reflection:.58,bright:1.24,loss:.18},
+  megaphone:{label:'Megaphone',pipe:.60,collector:.39,reflection:.80,bright:1.12,loss:.16}
+};
+
+/* Verified transmission data where public manufacturer/service data is available.
+   Rear rolling radii are derived from the published tyre size (or Yamaha's published R1 tyre diameter).
+   Shift cut times use a documented modern quickshifter range; exact OEM ECU cut maps are generally unpublished. */
+const DRIVETRAINS={
+  rsv4:{label:'Aprilia RSV4 1100 · AQS',kind:'bike',shiftType:'qs',primary:1.659,gears:[0,2.600,2.063,1.700,1.476,1.307,1.222],final:2.562,rearRadius:.3259,massKg:204,cda:.30,eff:.95,downBlip:.88,downMs:88},
+  r1:{label:'Yamaha YZF-R1 · QSS',kind:'bike',shiftType:'qs',primary:1.634,gears:[0,2.600,2.176,1.842,1.579,1.381,1.250],final:2.563,rearRadius:.3204,massKg:201,cda:.31,eff:.95,downBlip:.86,downMs:92},
+  s1000rr:{label:'BMW S 1000 RR · Shift Assistant Pro',kind:'bike',shiftType:'qs',primary:1.652,gears:[0,2.647,2.091,1.727,1.500,1.360,1.261],final:2.706,rearRadius:.3204,massKg:197,cda:.31,eff:.95,downBlip:.88,downMs:88},
+  rm125:{label:'Suzuki RM125 K6 · 6-speed',kind:'bike',shiftType:'bike-manual',primary:3.368,gears:[0,2.071,1.687,1.444,1.200,1.052,.950],final:4.250,rearRadius:.3403,massKg:87,cda:.50,eff:.91,upMs:95,downMs:90,downBlip:.50},
+  rsgp:{label:'Aprilia RS-GP26 · seamless · calibrated overall ratios (OEM ratios private)',kind:'bike',shiftType:'seamless',primary:1,gears:[0,15.329,12.349,10.338,8.717,7.288,6.174],final:1,rearRadius:.335,massKg:157,cda:.25,eff:.97,downBlip:.96,downMs:38,approx:true},
+  vfr:{label:'Honda VFR800F RC79',kind:'bike',shiftType:'bike-manual',primary:1.939,gears:[0,2.846,2.062,1.578,1.291,1.111,.965],final:2.687,rearRadius:.3149,massKg:239,cda:.39,eff:.92,upMs:190,downMs:155},
+  street765:{label:'Triumph Street Triple 765 RS · Shift Assist · MY23+',kind:'bike',shiftType:'qs',primary:1.85,gears:[0,2.31,1.86,1.50,1.29,1.14,.97],final:3.20,rearRadius:.3149,massKg:188,cda:.39,eff:.94,downBlip:.80,downMs:92},
+  ninja400:{label:'Kawasaki Ninja 400',kind:'bike',shiftType:'bike-manual',primary:2.219,gears:[0,2.929,2.056,1.619,1.333,1.154,1.037],final:2.929,rearRadius:.3059,massKg:168,cda:.35,eff:.92,upMs:180,downMs:150},
+  cp2:{label:'Yamaha MT-07 CP2',kind:'bike',shiftType:'bike-manual',primary:1.925,gears:[0,2.846,2.125,1.631,1.300,1.090,.964],final:2.687,rearRadius:.3149,massKg:184,cda:.40,eff:.92,upMs:175,downMs:145},
+  panigaleV4:{label:'Ducati Panigale V4 · DQS 2.0',kind:'bike',shiftType:'qs',primary:1.80,gears:[0,36/15,34/17,33/19,32/21,30/22,27/22],final:41/16,rearRadius:.3359,massKg:191,cda:.30,eff:.95,downBlip:.91,downMs:84},
+  tiger900:{label:'Triumph Tiger 900 · Shift Assist',kind:'bike',shiftType:'qs',primary:1.652,gears:[0,2.615,1.857,1.500,1.286,1.107,.967],final:3.125,rearRadius:.3209,massKg:222,cda:.49,eff:.93,downBlip:.78,downMs:100}
+};
+const DEFAULT_DRIVE={label:'Simulation fallback · should not be reached',kind:'bike',shiftType:'bike-manual',primary:1,gears:[0,2.6,2.0,1.55,1.28,1.10,.96],final:2.8,rearRadius:.315,massKg:200,cda:.40,eff:.91,upMs:200,downMs:165,approx:true};
+const REF={
+  rsv4:{model:'Aprilia RSV4 1100 Factory · 65° V4',bore:81,stroke:53.32,compression:13.6,idle:1500,idleRange:[1400,1600],redline:13600,redlineRange:[12500,14000],hp:220,hpRpm:13000,tq:127,tqRpm:10800,camBase:76,intakeBase:38,exhaustBase:'race',note:'Current 1,099 cc RSV4 geometry/power; firing sequence from Aprilia workshop data.',sound:{pulseSharp:1.06,pulseBody:1.13,burstScale:1.02,pipeScale:.92,collectorScale:.96,qScale:1.04,intakeScale:1.16,intakeBright:1.02,mechScale:1.04,gearScale:1.03,bankStereo:1.08,exhaustGain:1.02,mode3:.50,mode5:.19,int3:.34,int5:.12,cycleVarScale:.95,idleJitter:.012,idleMiss:.006,backfireScale:.95,shiftPopScale:.85,valveScale:1.05,primaryScale:1.08,chainScale:.85,clutchScale:.70,limiterDrop:160,limiterHz:15}},
+  r1:{model:'Yamaha YZF-R1 · 998 cc crossplane',bore:79,stroke:50.9,compression:13.0,idle:1250,idleRange:[1200,1400],redline:14000,redlineRange:[13000,14500],hp:197,hpRpm:13500,tq:113.3,tqRpm:11500,camBase:74,intakeBase:40,exhaustBase:'race',note:'Crossplane pulse cadence 270/180/90/180.',sound:{pulseSharp:.96,pulseBody:1.18,burstScale:1.00,pipeScale:.94,collectorScale:1.00,qScale:.96,intakeScale:1.02,intakeBright:.96,mechScale:.96,gearScale:1.04,bankStereo:.72,exhaustGain:1.04,mode3:.42,mode5:.14,int3:.25,int5:.09,cycleVarScale:1.12,idleJitter:.018,idleMiss:.008,backfireScale:.70,shiftPopScale:.72,valveScale:.95,primaryScale:1.10,chainScale:.82,clutchScale:.72,limiterDrop:175,limiterHz:15}},
+  s1000rr:{model:'BMW S 1000 RR · 999 cc inline-four',bore:80,stroke:49.7,compression:13.3,idle:1250,idleRange:[1200,1400],redline:14600,redlineRange:[13500,15000],hp:205,hpRpm:13750,tq:112.94,tqRpm:11000,camBase:72,intakeBase:42,exhaustBase:'race',note:'Even-firing flat-plane inline-four with ShiftCam intake system.',sound:{pulseSharp:1.18,pulseBody:.80,burstScale:1.06,pipeScale:.84,collectorScale:.86,qScale:1.08,intakeScale:1.10,intakeBright:1.20,mechScale:1.12,gearScale:1.18,bankStereo:.35,exhaustGain:1.00,mode3:.56,mode5:.28,int3:.38,int5:.18,cycleVarScale:.75,idleJitter:.009,idleMiss:.003,backfireScale:.62,shiftPopScale:.68,valveScale:1.18,primaryScale:1.20,chainScale:.86,clutchScale:.65,limiterDrop:145,limiterHz:17}},
+  rm125:{model:'Suzuki RM125 K6 · 124.8 cc two-stroke single',twoStroke:true,bore:54,stroke:54.5,compression:9.1,compressionDisplay:'8.3–9.9:1 · sim 9.1',idle:1800,idleRange:[1500,2200],redline:12500,redlineRange:[11000,13000],hp:41,hpRpm:11500,tq:30.2,tqRpm:10500,camBase:70,intakeBase:35,exhaustBase:'race',note:'2006 RM125. Compression varies with exhaust-valve position; 9.1:1 is the simulation midpoint.',sound:{pulseSharp:1.34,pulseBody:.62,burstScale:1.38,pipeScale:.74,collectorScale:.70,qScale:1.34,intakeScale:1.08,intakeBright:1.30,mechScale:.86,gearScale:.92,bankStereo:.20,exhaustGain:1.20,reedScale:1.35,pneumaticScale:.02,mode3:.62,mode5:.34,int3:.30,int5:.18,cycleVarScale:1.35,chamberScale:1.55,chamberTune:10500,idleJitter:.045,idleMiss:.12,backfireScale:.05,shiftPopScale:.08,valveScale:.03,primaryScale:.82,chainScale:.88,clutchScale:.45,limiterDrop:320,limiterHz:18}},
+  rsgp:{model:'Aprilia RS-GP26 · 1000 cc 90° MotoGP V4',bore:81,stroke:48.52,compression:13.8,idle:3000,idleRange:[2600,3400],redline:17600,redlineRange:[17000,18000],hp:280,hpRpm:17000,tq:118,tqRpm:14500,camBase:92,intakeBase:25,exhaustBase:'race',approx:true,note:'Aprilia publishes >280 CV and >17,500 rpm. Stroke is derived from 1000 cc + 81 mm bore. Compression and firing phasing are not public; those two are explicitly simulation proxies.',sound:{pulseSharp:1.36,pulseBody:.72,burstScale:1.30,pipeScale:.68,collectorScale:.78,qScale:1.12,intakeScale:1.16,intakeBright:1.28,mechScale:1.38,gearScale:1.52,bankStereo:1.05,exhaustGain:1.28,pneumaticScale:1.55,mode3:.60,mode5:.34,int3:.35,int5:.18,cycleVarScale:.65,idleJitter:.008,idleMiss:.001,backfireScale:1.02,shiftPopScale:1.05,valveScale:1.12,primaryScale:1.40,chainScale:.62,clutchScale:.24,limiterDrop:115,limiterHz:21}},
+  vfr:{model:'Honda VFR800F RC79 · 782 cc 90° V4',bore:72,stroke:48,compression:11.8,idle:1200,idleRange:[1100,1400],redline:12000,redlineRange:[10500,12500],hp:104.5,hpRpm:10250,tq:75.1,tqRpm:8500,camBase:48,intakeBase:58,exhaustBase:'stock',note:'Firing intervals 180/270/180/90 from Honda service data. Honda confirms 2-valve to 4-valve VTEC operation as revs rise; 6,500 rpm is used here as an acoustic crossover calibration.',sound:{pulseSharp:.93,pulseBody:1.08,burstScale:.86,pipeScale:1.05,collectorScale:1.08,qScale:.92,intakeScale:.90,intakeBright:.88,mechScale:.92,gearScale:.92,bankStereo:.90,exhaustGain:.90,mode3:.38,mode5:.14,int3:.25,int5:.09,cycleVarScale:.85,vtecRpm:6500,vtecScale:1,idleJitter:.010,idleMiss:.004,backfireScale:.20,shiftPopScale:.18,valveScale:.88,primaryScale:.92,chainScale:.78,clutchScale:.82,limiterDrop:170,limiterHz:13}},
+  street765:{model:'Triumph Street Triple 765 RS',bore:78,stroke:53.4,compression:13.25,idle:1250,idleRange:[1200,1400],redline:12500,redlineRange:[12000,13000],hp:128.2,hpRpm:12000,tq:80,tqRpm:9500,camBase:68,intakeBase:44,exhaustBase:'race',note:'Even 120° crank / 240° combustion spacing.',sound:{pulseSharp:1.06,pulseBody:.92,burstScale:1.00,pipeScale:.90,collectorScale:.92,qScale:1.04,intakeScale:1.20,intakeBright:1.10,mechScale:1.00,gearScale:1.00,bankStereo:.30,exhaustGain:.98,mode3:.48,mode5:.20,int3:.35,int5:.13,cycleVarScale:.85,idleJitter:.012,idleMiss:.004,backfireScale:.48,shiftPopScale:.55,valveScale:1.04,primaryScale:1.02,chainScale:.82,clutchScale:.72,limiterDrop:160,limiterHz:15}},
+  ninja400:{model:'Kawasaki Ninja 400 · 399 cc 180° twin',bore:70,stroke:51.8,compression:11.5,idle:1300,idleRange:[1250,1350],redline:12500,redlineRange:[11000,13000],hp:46.9,hpRpm:10000,tq:37,tqRpm:8000,camBase:52,intakeBase:52,exhaustBase:'stock',note:'180° crank gives 180/540 combustion spacing.',sound:{pulseSharp:1.00,pulseBody:.84,burstScale:.82,pipeScale:1.00,collectorScale:1.04,qScale:.94,intakeScale:.86,intakeBright:.96,mechScale:.90,gearScale:.90,bankStereo:.22,exhaustGain:.86,mode3:.36,mode5:.12,int3:.22,int5:.08,cycleVarScale:1.12,idleJitter:.016,idleMiss:.009,backfireScale:.18,shiftPopScale:.15,valveScale:.90,primaryScale:.90,chainScale:.90,clutchScale:.92,limiterDrop:190,limiterHz:14}},
+  cp2:{model:'Yamaha MT-07 · CP2 689 cc 270° twin',bore:80,stroke:68.6,compression:11.5,idle:1250,idleRange:[1100,1500],redline:10500,redlineRange:[8500,10500],hp:73.4,hpRpm:8750,tq:68,tqRpm:6500,camBase:45,intakeBase:58,exhaustBase:'stock',note:'270/450 combustion spacing. Current MT-07 uses acoustic intake amplification.',sound:{pulseSharp:.91,pulseBody:1.20,burstScale:.94,pipeScale:1.08,collectorScale:1.08,qScale:.98,intakeScale:1.26,intakeBright:.84,mechScale:.90,gearScale:.90,bankStereo:.30,exhaustGain:.96,mode3:.35,mode5:.11,int3:.28,int5:.10,cycleVarScale:1.22,idleJitter:.024,idleMiss:.010,backfireScale:.30,shiftPopScale:.18,valveScale:.84,primaryScale:.88,chainScale:.90,clutchScale:.95,limiterDrop:210,limiterHz:13}},
+  panigaleV4:{model:'Ducati Panigale V4 MY25 Canada · 1103 cc Twin Pulse',bore:81,stroke:53.5,compression:14.0,idle:1350,idleRange:[1200,1450],redline:14500,redlineRange:[14000,15000],hp:209,hpRpm:12750,tq:121.3,tqRpm:11250,camBase:80,intakeBase:36,exhaustBase:'race',note:'Twin Pulse firing at 0/90/290/380°.',sound:{pulseSharp:1.15,pulseBody:1.06,burstScale:1.12,pipeScale:.84,collectorScale:.92,qScale:1.05,intakeScale:1.14,intakeBright:1.06,mechScale:1.10,gearScale:1.10,bankStereo:1.16,exhaustGain:1.10,mode3:.46,mode5:.18,int3:.32,int5:.12,cycleVarScale:1.00,idleJitter:.014,idleMiss:.005,backfireScale:1.05,shiftPopScale:1.02,valveScale:1.14,primaryScale:1.24,chainScale:.82,clutchScale:.65,limiterDrop:150,limiterHz:16}},
+  tiger900:{model:'Triumph Tiger 900 · 888 cc T-Plane triple',bore:78,stroke:61.9,compression:13.0,idle:1200,idleRange:[1100,1400],redline:10000,redlineRange:[9500,10500],hp:106.5,hpRpm:9500,tq:90,tqRpm:6850,camBase:48,intakeBase:66,exhaustBase:'stock',note:'T-Plane 1-3-2 firing order with 180/270/270 intervals.',sound:{pulseSharp:.93,pulseBody:1.18,burstScale:.90,pipeScale:1.04,collectorScale:1.06,qScale:.94,intakeScale:1.02,intakeBright:.86,mechScale:.92,gearScale:.92,bankStereo:.30,exhaustGain:.94,mode3:.38,mode5:.13,int3:.25,int5:.09,cycleVarScale:1.18,idleJitter:.020,idleMiss:.008,backfireScale:.30,shiftPopScale:.40,valveScale:.90,primaryScale:.92,chainScale:.88,clutchScale:.82,limiterDrop:190,limiterHz:13}}
+};
+const LAYOUTS={
+  single2t:{label:'Two-stroke single',cyl:1,type:'inline',cycle:360,cranks:{rm125:{label:'RM125 · one power pulse / revolution',events:[0],order:[1],banks:['C'],ref:'rm125',twoStroke:true}}},
+  p2:{label:'Parallel twin',cyl:2,type:'inline',cycle:720,cranks:{p270:{label:'MT-07 CP2 · 270/450',events:[0,270],order:[1,2],banks:['C','C'],ref:'cp2'},p180:{label:'Ninja 400 · 180/540',events:[0,180],order:[1,2],banks:['C','C'],ref:'ninja400'}}},
+  i3:{label:'Inline triple',cyl:3,type:'inline',cycle:720,cranks:{i3_120:{label:'Street Triple · 240/240/240',events:[0,240,480],order:[1,2,3],banks:['C','C','C'],ref:'street765'},tplane:{label:'Tiger T-Plane · 180/270/270',events:[0,180,450],order:[1,3,2],banks:['C','C','C'],ref:'tiger900'}}},
+  i4:{label:'Inline four',cyl:4,type:'inline',cycle:720,cranks:{flat180:{label:'S1000RR · even 180°',events:[0,180,360,540],order:[1,3,4,2],banks:['C','C','C','C'],ref:'s1000rr'},cross270:{label:'R1 crossplane · 270/180/90/180',events:[0,270,450,540],order:[1,3,2,4],banks:['C','C','C','C'],ref:'r1'}}},
+  v4:{label:'V4',cyl:4,type:'v',cycle:720,cranks:{rsv4:{label:'RSV4 · 65° · 180/245/180/115',events:[0,180,425,605],order:[1,3,2,4],banks:['L','R','L','R'],ref:'rsv4',bankAngle:65},vfr:{label:'VFR800 · 180/270/180/90',events:[0,180,450,630],order:[1,3,2,4],banks:['L','R','L','R'],ref:'vfr',bankAngle:90},v4twin:{label:'Panigale V4 · Twin Pulse 90/200/90/340',events:[0,90,290,380],order:[1,3,2,4],banks:['L','L','R','R'],ref:'panigaleV4',bankAngle:90},rsgp:{label:'RS-GP26 · exact firing phasing unpublished · acoustic proxy',events:[0,90,290,380],order:[1,3,2,4],banks:['L','L','R','R'],ref:'rsgp',bankAngle:90,approx:true}}}
+};
+const PRESETS={
+  'Aprilia RSV4':{layout:'v4',crank:'rsv4',bore:81,stroke:53.32,compression:13.6,cam:76,flywheel:32,redline:13600,exhaust:'race',muffling:18,intake:38,exhaustMix:90,intakeMix:52,mechanicalMix:25,limiter:'fuel'},
+  'Yamaha R1':{layout:'i4',crank:'cross270',bore:79,stroke:50.9,compression:13.0,cam:74,flywheel:38,redline:14000,exhaust:'race',muffling:15,intake:40,exhaustMix:88,intakeMix:46,mechanicalMix:25,limiter:'fuel'},
+  'BMW S1000RR':{layout:'i4',crank:'flat180',bore:80,stroke:49.7,compression:13.3,cam:72,flywheel:35,redline:14600,exhaust:'race',muffling:18,intake:42,exhaustMix:86,intakeMix:50,mechanicalMix:28,limiter:'fuel'},
+  'Suzuki RM125':{layout:'single2t',crank:'rm125',bore:54,stroke:54.5,compression:9.1,cam:70,flywheel:22,redline:12500,exhaust:'short',muffling:10,intake:35,exhaustMix:94,intakeMix:32,mechanicalMix:16,limiter:'soft'},
+  'Aprilia RS-GP':{layout:'v4',crank:'rsgp',bore:81,stroke:48.52,compression:13.8,cam:92,flywheel:18,redline:17600,exhaust:'megaphone',muffling:2,intake:25,exhaustMix:96,intakeMix:48,mechanicalMix:34,limiter:'ignition'},
+  'Honda VFR800':{layout:'v4',crank:'vfr',bore:72,stroke:48,compression:11.8,cam:48,flywheel:50,redline:12000,exhaust:'stock',muffling:44,intake:58,exhaustMix:82,intakeMix:34,mechanicalMix:22,limiter:'fuel'},
+  'Street Triple 765 RS':{layout:'i3',crank:'i3_120',bore:78,stroke:53.4,compression:13.25,cam:68,flywheel:42,redline:12500,exhaust:'race',muffling:24,intake:44,exhaustMix:84,intakeMix:54,mechanicalMix:24,limiter:'fuel'},
+  'Ninja 400 Twin':{layout:'p2',crank:'p180',bore:70,stroke:51.8,compression:11.5,cam:52,flywheel:42,redline:12500,exhaust:'stock',muffling:40,intake:52,exhaustMix:78,intakeMix:34,mechanicalMix:24,limiter:'fuel'},
+  'MT-07':{layout:'p2',crank:'p270',bore:80,stroke:68.6,compression:11.5,cam:45,flywheel:48,redline:10500,exhaust:'stock',muffling:42,intake:58,exhaustMix:82,intakeMix:60,mechanicalMix:22,limiter:'fuel'},
+  'Panigale V4':{layout:'v4',crank:'v4twin',bore:81,stroke:53.5,compression:14.0,cam:80,flywheel:30,redline:14500,exhaust:'race',muffling:12,intake:36,exhaustMix:92,intakeMix:50,mechanicalMix:28,limiter:'fuel'},
+  'Tiger 900 T-Plane':{layout:'i3',crank:'tplane',bore:78,stroke:61.9,compression:13.0,cam:48,flywheel:54,redline:10000,exhaust:'stock',muffling:34,intake:66,exhaustMix:82,intakeMix:42,mechanicalMix:23,limiter:'fuel'}
+};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t, smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+const deepClone=o=>JSON.parse(JSON.stringify(o));
+const base=deepClone(CONFIG.defaults);
+const state={...base,throttle:0,targetThrottle:0,rpm:0,running:false,mode:'off',muted:false,gear:0,autoShift:true,speed:0,load:0,brakeInput:0,abA:null,abB:null,activeAB:null,gamepad:false,midi:false,recording:false,audioReady:false,visualPhase:0,flybyActive:false,flybyX:-150,flybyDoppler:1,flybyDistance:0,flybyPrevListener:null,flybyPending:false,flybyBikes:[],shifting:false,shiftFrom:0,shiftTo:0,shiftElapsed:0,shiftDuration:.12,shiftApplied:false,shiftCut:0,shiftBlip:0,shiftCoupling:1,shiftProfile:null,lastShiftAt:-1e9,limiterActive:false,limiterReleaseRpm:0};
+let lastTs=performance.now(), throttleDrag=false, spaceDown=false, brakeDown=false, blipUntil=0, morphToken=0, reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+function layoutCfg(){return LAYOUTS[state.layout]}
+function crankCfg(){return layoutCfg().cranks[state.crank]||Object.values(layoutCfg().cranks)[0]}
+function refCfg(){return REF[crankCfg().ref]}
+function driveCfg(){return DRIVETRAINS[crankCfg().ref]||DEFAULT_DRIVE}
+function maxGear(){return driveCfg().gears.length-1}
+function totalRatio(gear){const d=driveCfg();return gear>0?d.primary*d.gears[gear]*d.final:0}
+function rpmForSpeed(gear,speed=state.speed){if(gear<=0)return idleRpm();const d=driveCfg();return (speed/d.rearRadius)*totalRatio(gear)*60/(Math.PI*2)}
+function speedForRpm(gear,rpm){if(gear<=0)return 0;const d=driveCfg();return (rpm*Math.PI*2/60)/totalRatio(gear)*d.rearRadius}
+function simMassKg(){const d=driveCfg();return d.massKg+(d.kind==='car'?CONFIG.sim.driverMassKg:CONFIG.sim.riderMassKg)}
+function roadLoadForce(speed){const d=driveCfg(),crr=d.crr??(d.kind==='car'?CONFIG.sim.rollingCoeffCar:CONFIG.sim.rollingCoeffBike);const aero=.5*CONFIG.sim.airDensity*d.cda*speed*speed;const roll=simMassKg()*9.80665*crr;return aero+roll}
+function quickCutMs(fromGear){const d=driveCfg();const base=[0,72,60,52,46,42,40][clamp(fromGear,1,6)]||52;return d.shiftType==='seamless'?18:d.shiftType==='qs'?base:(d.upMs||190)}
+function upshiftRpm(){const r=refCfg(),limit=actualLimiterRpm();const peak=r.hpRpm||limit*.86;const normal=Math.min(limit*.945,Math.max(peak*1.012,limit*.855));return state.flybyActive?Math.min(normal,limit*.915):normal}
+function ensureCrank(){if(!layoutCfg().cranks[state.crank]) state.crank=Object.keys(layoutCfg().cranks)[0]}
+function currentBikeName(){const ref=crankCfg().ref;return Object.keys(PRESETS).find(name=>{const p=PRESETS[name];return LAYOUTS[p.layout]?.cranks?.[p.crank]?.ref===ref})||refCfg().model}
+function bikeInfo(name){const p=PRESETS[name]||PRESETS['Aprilia RSV4'];const lay=LAYOUTS[p.layout],cr=lay.cranks[p.crank],r=REF[cr.ref],d=DRIVETRAINS[cr.ref]||DEFAULT_DRIVE;return {name,p,lay,cr,r,d};}
+function bikeTotalRatio(name,gear){const {d}=bikeInfo(name);return gear>0?d.primary*d.gears[gear]*d.final:0}
+function bikeRpmForSpeed(name,gear,speed){const {d}=bikeInfo(name);return gear>0?(speed/d.rearRadius)*bikeTotalRatio(name,gear)*60/(Math.PI*2):bikeInfo(name).r.idle}
+function bikeFlybyMaxSpeed(name){const {r,d}=bikeInfo(name),g=d.gears.length-1;return (r.redline*.90*Math.PI*2/60)/bikeTotalRatio(name,g)*d.rearRadius}function chooseFlybyGear(name,speed){const {r,d}=bikeInfo(name);const max=d.gears.length-1,target=Math.min(r.hpRpm*.82,r.redline*.77);let best=max,err=1e12,found=false;for(let g=1;g<=max;g++){const rr=bikeRpmForSpeed(name,g,speed);if(rr<r.redline*.91){const e=Math.abs(rr-target);if(e<err){err=e;best=g;found=true}}}if(!found)best=max;return best}
+function audioDataForBike(name,b={}){const {p,lay,cr,r}=bikeInfo(name),ex=EXHAUSTS[p.exhaust],snd=r.sound||{},thr=clamp(b.throttle??.78,0,1),load=clamp(b.load??72,0,100),egt=720+210*thr,c=Math.sqrt(CONFIG.physics.gammaExhaust*CONFIG.physics.Rgas*egt);return {rpm:b.rpm??r.idle,throttle:thr,load,redline:r.redline,compression:p.compression,cam:p.cam,flywheel:p.flywheel,muffling:p.muffling,intake:p.intake,bore:p.bore,stroke:p.stroke,exhaustMix:p.exhaustMix*(b.x==null?1:(.72+.28*clamp((b.x+110)/220,0,1))),intakeMix:p.intakeMix*(b.x==null?1:(1+.16*clamp((-b.x+70)/180,0,1))),mechanicalMix:p.mechanicalMix,muted:false,mode:b.mode||'running',cycle:lay.cycle,events:cr.events,banks:cr.banks||[],pipe:ex.pipe,collector:ex.collector,reflection:ex.reflection,bright:ex.bright,layout:p.layout,limiterMode:p.limiter||'fuel',exhaustC:c,uel:!!cr.uel,shiftCut:b.shiftCut||0,shiftBlip:b.shiftBlip||0,gear:b.gear||0,roadSpeed:b.speed||0,cylCount:lay.cyl,twoStroke:!!r.twoStroke,pulseSharp:snd.pulseSharp||1,pulseBody:snd.pulseBody||1,burstScale:snd.burstScale||1,pipeScale:snd.pipeScale||1,collectorScale:snd.collectorScale||1,qScale:snd.qScale||1,intakeScale:snd.intakeScale||1,intakeBright:snd.intakeBright||1,mechScale:snd.mechScale||1,gearScale:snd.gearScale||1,bankStereo:snd.bankStereo||1,exhaustGain:snd.exhaustGain||1,reedScale:snd.reedScale||1,pneumaticScale:snd.pneumaticScale||1,mode3:snd.mode3??.42,mode5:snd.mode5??.18,int3:snd.int3??.30,int5:snd.int5??.11,cycleVarScale:snd.cycleVarScale||1,vtecRpm:snd.vtecRpm||0,vtecScale:snd.vtecScale||0,chamberScale:snd.chamberScale||0,chamberTune:snd.chamberTune||10500,idleRpm:r.idle,idleJitter:snd.idleJitter??.01,idleMiss:snd.idleMiss??0,backfireScale:snd.backfireScale??.5,shiftPopScale:snd.shiftPopScale??.5,valveScale:snd.valveScale??1,primaryScale:snd.primaryScale??1,chainScale:snd.chainScale??1,clutchScale:snd.clutchScale??1,limiterDrop:snd.limiterDrop??140,limiterHz:snd.limiterHz??14,limiterActive:!!b.limiterActive};}
+function displacement(){return Math.PI/4*state.bore*state.bore*state.stroke*layoutCfg().cyl/1000}
+function meanPistonSpeed(r=state.rpm){return 2*(state.stroke/1000)*(r/60)}
+function firingRate(r=state.rpm){return (r/60)*crankCfg().events.length*(360/layoutCfg().cycle)}
+function firingIntervals(){const e=crankCfg().events,c=layoutCfg().cycle;return e.map((a,i)=>((e[(i+1)%e.length]+(i===e.length-1?c:0))-a))}
+function referenceMps(){const r=refCfg();return 2*(r.stroke/1000)*(r.redline/60)}
+function recommendedRedline(){
+  const r=refCfg();
+  const mpsRef=referenceMps();
+  const pistonLimit=(mpsRef*60)/(2*(state.stroke/1000));
+  const camRatio=(state.cam-r.camBase)/100;
+  const boreRatio=state.bore/r.bore;
+  const compRatio=state.compression/r.compression;
+  const valveFactor=clamp(1+camRatio*.10-(boreRatio-1)*.08-(compRatio-1)*.05,.86,1.10);
+  const valvetrainLimit=r.redline*valveFactor;
+  return clamp(Math.round(Math.min(pistonLimit,valvetrainLimit)/50)*50,r.redlineRange[0],r.redlineRange[1]);
+}
+function actualLimiterRpm(){return Math.min(state.redline,recommendedRedline()*1.02)}
+function ottoEfficiency(cr){const g=CONFIG.physics.ottoGamma;return 1-1/Math.pow(Math.max(5,cr),g-1)}
+function interp(points,x){for(let i=0;i<points.length-1;i++){const a=points[i],b=points[i+1];if(x<=b[0]){const t=smooth(a[0],b[0],x);return lerp(a[1],b[1],t)}}return points.at(-1)[1]}
+function dynoAt(rpm){
+  const r=refCfg(), cc=displacement(), refCC=(Math.PI/4*r.bore*r.bore*r.stroke*layoutCfg().cyl/1000);
+  const hpRpm=r.hpRpm??Math.round(r.redline*.80), tqAtPower=r.hp?r.hp*7127/hpRpm:r.tq*.62;
+  const baseCurve=interp([[Math.max(500,r.idle),r.tq*.48],[r.redline*.35,r.tq*.78],[r.tqRpm,r.tq],[hpRpm,tqAtPower],[r.redline,tqAtPower*.72]],clamp(rpm,Math.max(500,r.idle),r.redline));
+  const dispScale=cc/refCC;
+  const compScale=ottoEfficiency(state.compression)/ottoEfficiency(r.compression);
+  const camDelta=(state.cam-r.camBase)/100;
+  const breathing=clamp(1+camDelta*(smooth(r.redline*.45,r.redline*.9,rpm)*.18-(1-smooth(r.redline*.25,r.redline*.5,rpm))*.10),.82,1.18);
+  const exScale=({stock:.97,race:1.02,short:.995,megaphone:1.01}[state.exhaust]||1)/({stock:.97,race:1.02,short:.995,megaphone:1.01}[r.exhaustBase]||1);
+  const intakeTuneRpm=3500+(100-state.intake)*80, refTune=3500+(100-r.intakeBase)*80;
+  const intakeScale=clamp(1+.045*Math.exp(-Math.pow((rpm-intakeTuneRpm)/2200,2))-.045*Math.exp(-Math.pow((rpm-refTune)/2200,2)),.93,1.07);
+  let tq=baseCurve*dispScale*compScale*breathing*exScale*intakeScale;
+  const rec=recommendedRedline(); if(rpm>rec)tq*=Math.max(0,1-(rpm-rec)/(Math.max(250,rec*.06)));
+  tq=Math.max(0,tq); return {tq,hp:tq*rpm/7127};
+}
+function dynoPeak(){let bestHp={hp:0,tq:0,rpm:0},bestTq={hp:0,tq:0,rpm:0};for(let i=500;i<=actualLimiterRpm();i+=50){const d=dynoAt(i);if(d.hp>bestHp.hp)bestHp={...d,rpm:i};if(d.tq>bestTq.tq)bestTq={...d,rpm:i}}return {hp:bestHp.hp,hpRpm:bestHp.rpm,tq:bestTq.tq,tqRpm:bestTq.rpm}}
+function exhaustGasTempK(){const load=state.throttle/100;return 720+210*load}
+function exhaustSoundSpeed(){return Math.sqrt(CONFIG.physics.gammaExhaust*CONFIG.physics.Rgas*exhaustGasTempK())}
+function quarterWaveHz(){return exhaustSoundSpeed()/(4*EXHAUSTS[state.exhaust].pipe)}
+function configSnapshot(){const keys=['layout','crank','exhaust','bore','stroke','compression','cam','flywheel','redline','muffling','intake','exhaustMix','intakeMix','mechanicalMix','listener','limiter','reverbEnv','reverbAmount','flybySpeed','flybyOffset','flybyCount','flybySpread','flybyBike1','flybyBike2','flybyBike3'];return Object.fromEntries(keys.map(k=>[k,state[k]]))}
+function applyConfig(obj,{morph=false}={}){if(!obj)return;if(morph)return morphTo(obj);Object.assign(state,obj);if(!LAYOUTS[state.layout])state.layout='i4';ensureCrank();syncUI();audio?.pushConfig(true);updateHash()}
+function encodeSetup(o=configSnapshot()){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function decodeSetup(s){try{return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))))}catch{return null}}
+function updateHash(){try{history.replaceState(null,'','#'+encodeSetup())}catch{}}
+function loadHash(){if(location.hash.length>2){const o=decodeSetup(location.hash.slice(1));if(o)Object.assign(state,o)}}
+
+/* -------------------------- AUDIO WORKLET -------------------------- */
+const WORKLET_CODE=String.raw`
+class EngineProcessor extends AudioWorkletProcessor{
+  constructor(){
+    super();
+    this.sr=sampleRate;
+    this.phase=0;
+    this.s={rpm:0,throttle:0,load:0,redline:12000,compression:11,cam:50,flywheel:50,muffling:20,intake:50,bore:80,stroke:60,exhaustMix:80,intakeMix:45,mechanicalMix:25,shiftCut:0,shiftBlip:0,roadSpeed:0,gear:0,muted:false,mode:'off',cycle:720,events:[0,180,360,540],banks:['L','R','L','R'],pipe:.8,collector:.5,reflection:.7,bright:1,layout:'i4',limiterMode:'fuel',exhaustC:540,uel:false,cylCount:4,twoStroke:false,pulseSharp:1,pulseBody:1,burstScale:1,pipeScale:1,collectorScale:1,qScale:1,intakeScale:1,intakeBright:1,mechScale:1,gearScale:1,bankStereo:1,exhaustGain:1,reedScale:1,pneumaticScale:1,mode3:.42,mode5:.18,int3:.30,int5:.11,cycleVarScale:1,vtecRpm:0,vtecScale:0,chamberScale:0,chamberTune:10500,idleRpm:1200,idleJitter:.01,idleMiss:.0,backfireScale:.5,shiftPopScale:.5,valveScale:1,primaryScale:1,chainScale:1,clutchScale:1,limiterDrop:140,limiterHz:14,limiterActive:false};
+    this.t={...this.s};
+    this.seed=0x1234abcd;
+    this.prevThrottle=0;
+    this.crankPhase=0;
+    this.decel=0;
+    this.limiterPop=0;
+    this.eventCounter=0;
+
+    /* Exhaust blow-down is represented by a bipolar double-exponential pressure pulse.
+       The fast state gives the valve-opening edge; the slower state gives the pressure tail/rarefaction. */
+    this.fastL=0;this.slowL=0;this.burstL=0;
+    this.fastR=0;this.slowR=0;this.burstR=0;
+    this.fastC=0;this.slowC=0;this.burstC=0;
+    this.cycleStrength=1;
+
+    /* Intake pulses occur about one crank revolution away from the firing event in a four-stroke cycle.
+       The intake source is primarily deterministic valve/runner flow. A small, band-limited turbulence
+       component is added only as texture; it is never used as the main intake sound source. */
+    this.intFast=0;this.intSlow=0;this.intVortex=0;
+    this.intTurbFast=0;this.intTurbSlow=0;
+
+    /* Quarter-wave branch/collector delay lines. Pressure reflection at an open end is inverted,
+       therefore the feedback sign is negative; this places the first strong mode near c/(4L). */
+    this.waveL=new Float32Array(8192);
+    this.waveR=new Float32Array(8192);
+    this.waveC=new Float32Array(8192);
+    this.wiL=0;this.wiR=0;this.wiC=0;
+    this.dampL=0;this.dampR=0;this.dampC=0;
+
+    /* Three damped acoustic modes per exhaust bank + collector. Intake gets a plenum/airbox
+       resonance plus the first three odd runner modes, which keeps its character tonal/pulsed
+       rather than broadband-noise based. */
+    this.rL1=new Float64Array(2);this.rL3=new Float64Array(2);this.rL5=new Float64Array(2);
+    this.rR1=new Float64Array(2);this.rR3=new Float64Array(2);this.rR5=new Float64Array(2);
+    this.rC1=new Float64Array(2);this.rC3=new Float64Array(2);this.rC5=new Float64Array(2);
+    this.rIH=new Float64Array(2);this.rI1=new Float64Array(2);this.rI3=new Float64Array(2);this.rI5=new Float64Array(2);
+    this.rTS=new Float64Array(2); // RM125 expansion-chamber resonator: must exist before the two-stroke path runs.
+    this.rValve1=new Float64Array(2);this.rValve2=new Float64Array(2);this.rClack1=new Float64Array(2);this.rClack2=new Float64Array(2);this.rClunk=new Float64Array(2);
+    this.valveTick=0;this.shiftClack=0;this.shiftClunk=0;this.shiftSpark=0;this.chainNoise=0;this.mechPhase=0;this.meshPhase=0;
+
+    /* Simple filters used for combustion-noise and final DC removal. */
+    this.noiseLP=0;this.noiseHPx=0;this.noiseHPy=0;
+    this.outHPx=0;this.outHPy=0;
+    this.tailLP=0;this.levelEnv=0;
+
+    this.record=false;this.recL=[];this.recR=[];this.recCount=0;
+    this.port.onmessage=e=>{
+      const d=e.data;
+      if(d.type==='state')Object.assign(this.t,d.data);
+      if(d.type==='event'){
+        const v=Math.max(0,Math.min(2,d.intensity??1));
+        if(d.kind==='shiftStart'){this.shiftClunk+=.18*v;}
+        if(d.kind==='shiftEngage'){this.shiftClack+=.46*v;this.shiftClunk+=.26*v;if(d.direction==='up')this.shiftSpark+=.20*v;}
+        if(d.kind==='downshift'){this.shiftClack+=.40*v;this.shiftClunk+=.34*v;this.shiftSpark+=.08*v;}
+        if(d.kind==='backfire'){this.limiterPop=Math.min(2,this.limiterPop+.85*v);}
+      }
+      if(d.type==='record'){
+        this.record=d.on;
+        if(!d.on){
+          if(this.recL.length){
+            const l=this.recL,r=this.recR;
+            this.port.postMessage({type:'pcm',l,r},[...l.map(a=>a.buffer),...r.map(a=>a.buffer)]);
+            this.recL=[];this.recR=[];this.recCount=0;
+          }
+          this.port.postMessage({type:'recordEnd'});
+        }
+      }
+    };
+  }
+  rand(){this.seed=(1664525*this.seed+1013904223)>>>0;return this.seed/4294967296;}
+  noise(){return this.rand()*2-1;}
+  crossed(a,p0,p1,wrap){return wrap?(a>=p0||a<p1):(a>=p0&&a<p1);}
+  expCoef(tau){return Math.exp(-1/(Math.max(.00004,tau)*this.sr));}
+  qRes(input,st,f,q){
+    f=Math.max(20,Math.min(this.sr*.44,f));
+    q=Math.max(.55,Math.min(18,q));
+    const r=Math.exp(-Math.PI*f/(q*this.sr));
+    const a=2*r*Math.cos(2*Math.PI*f/this.sr);
+    const y=input*(1-r)*.22+a*st[0]-r*r*st[1];
+    st[1]=st[0];st[0]=y;
+    return y;
+  }
+  quarterWave(input,buf,idx,lenMeters,c,feedback,dampProp){
+    /* Closed/valve end (+) and open outlet (-) -> negative round-trip pressure reflection.
+       Round-trip travel time is 2L/c; the sign inversion produces the quarter-wave series. */
+    const delay=Math.max(2,Math.min(buf.length-2,Math.round((2*lenMeters/c)*this.sr)));
+    let ri=idx-delay;if(ri<0)ri+=buf.length;
+    const delayed=buf[ri];
+    this[dampProp]+=.18*(delayed-this[dampProp]);
+    buf[idx]=input-this[dampProp]*feedback;
+    return delayed;
+  }
+  bankPulse(bank,amp,burst){
+    if(bank==='R'){this.fastR+=amp;this.slowR+=amp*.58;this.burstR+=burst;}
+    else if(bank==='L'){this.fastL+=amp;this.slowL+=amp*.58;this.burstL+=burst;}
+    else {this.fastC+=amp;this.slowC+=amp*.58;this.burstC+=burst;}
+  }
+  process(inputs,outputs){
+    const out=outputs[0],L=out[0],R=out[1]||out[0],N=L.length,sr=this.sr;
+    const sm=.0035;
+    for(const k of ['rpm','throttle','load','redline','compression','cam','flywheel','muffling','intake','bore','stroke','exhaustMix','intakeMix','mechanicalMix','shiftCut','shiftBlip','roadSpeed','pulseSharp','pulseBody','burstScale','pipeScale','collectorScale','qScale','intakeScale','intakeBright','mechScale','gearScale','bankStereo','exhaustGain','reedScale','pneumaticScale','mode3','mode5','int3','int5','cycleVarScale','vtecRpm','vtecScale','chamberScale','chamberTune','idleRpm','idleJitter','idleMiss','backfireScale','shiftPopScale','valveScale','primaryScale','chainScale','clutchScale','limiterDrop','limiterHz'])this.s[k]+=(this.t[k]-this.s[k])*(1-Math.pow(1-sm,N));
+    for(const k of ['mode','muted','cycle','events','banks','pipe','collector','reflection','bright','layout','limiterMode','exhaustC','uel','gear','cylCount','twoStroke','limiterActive'])this.s[k]=this.t[k];
+    /* Inactive flyby processors must be effectively free. Four full DSP voices at 128-sample blocks
+       can underrun slower browsers and present as audible dropouts. */
+    if(this.s.mode==='off'&&this.t.mode==='off'){L.fill(0);if(R!==L)R.fill(0);return true;}
+
+    const rpm=Math.max(0,this.s.rpm),thr=clampW(this.s.throttle,0,1),cycle=this.s.cycle||720,events=this.s.events||[0],banks=this.s.banks||[];
+    const baseDegPer=(rpm/60)*360/sr;
+    const comp=clampW((this.s.compression-8)/6.5,0,1);
+    const cam=clampW(this.s.cam/100,0,1);
+    const muf=clampW(this.s.muffling/100,0,1);
+    const exMix=this.s.exhaustMix/100,inMix=this.s.intakeMix/100,mechMix=this.s.mechanicalMix/100;
+    const gasC=clampW(this.s.exhaustC||540,480,620);
+    const runner=.12+(this.s.intake/100)*.43;
+    const pipe=Math.max(.20,this.s.pipe*(this.s.pipeScale||1)*(.96+(this.s.stroke-65)*.0012));
+    const collector=Math.max(.18,this.s.collector*(this.s.collectorScale||1)*(.98+(events.length-4)*.012));
+    const fPipe=gasC/(4*pipe), fCollector=gasC/(4*collector), fIntake=343/(4*runner);
+    const openFactor=(this.s.bright||1);
+    const qBase=clampW((2.8+(this.s.reflection||.6)*8.5-muf*4.5)*(this.s.qScale||1),1.0,14);
+    const qHigh=Math.max(.8,qBase*(.58-muf*.20));
+    const feedback=clampW((this.s.reflection||.65)*(1-muf*.52),.12,.88);
+
+    /* Geometry/load controls the blow-down pulse shape. Long stroke gives more low-frequency body;
+       high compression and load sharpen the initial pressure gradient. */
+    const strokeBore=clampW(this.s.stroke/Math.max(1,this.s.bore),.38,1.35);
+    const tauFast=(.00038+.00046*(1-comp)+.00018*(1-thr))/Math.max(.62,this.s.pulseSharp||1);
+    const tauSlow=(.0023+.0028*strokeBore+.0013*(1-thr))*Math.max(.72,this.s.pulseBody||1);
+    const aFast=this.expCoef(tauFast),aSlow=this.expCoef(tauSlow),aBurst=this.expCoef(.0011+.0007*muf);
+    const aIntFast=this.expCoef(.00135+.00105*(this.s.intake/100));
+    const aIntSlow=this.expCoef(.0065+.010*(this.s.intake/100));
+    const aIntVortex=this.expCoef(.014+.010*(this.s.intake/100));
+
+    const starter=this.s.mode==='cranking'||this.s.mode==='catching';
+    const combustion=this.s.mode==='running'||this.s.mode==='catching'||this.s.mode==='stopping';
+    const active=starter||combustion;
+    const limiter=!!this.s.limiterActive||(rpm>this.s.redline*.994&&thr>.22);
+    const limHz=this.s.limiterHz||14;
+    const crankHz=rpm/60;
+    const cylCount=Math.max(1,this.s.cylCount||events.length);
+    const sizeCc=Math.max(55,Math.PI*.25*this.s.bore*this.s.bore*this.s.stroke/1000);
+    const sizeGain=Math.pow(sizeCc/250,.22);
+    const smoothCyl=1/Math.sqrt(Math.max(1,cylCount));
+    const idleFactor=1-smooth(.10,.34,thr)-smooth(1800,4200,rpm)*.55;
+    const cycleVar=clampW((.012+.075*cam*cam)*smoothCyl*Math.max(0,idleFactor)*(this.s.cycleVarScale||1),.003,.11);
+    const fly=clampW(this.s.flywheel/100,0,1);
+    const torqueRipple=clampW((.052/Math.sqrt(Math.max(1,cylCount)))*(1-.72*fly)*(1-.72*thr)*clampW(1-rpm/6500,0,1),0,.045);
+    const meanInterval=cycle/Math.max(1,events.length);
+    const shiftCut=clampW(this.s.shiftCut||0,0,1),shiftBlip=clampW(this.s.shiftBlip||0,0,1);
+    const vtecAmount=(this.s.vtecRpm||0)>0?smooth((this.s.vtecRpm||6500)-260,(this.s.vtecRpm||6500)+260,rpm)*(this.s.vtecScale||0):0;
+
+    if(this.prevThrottle-thr>.045&&rpm>2300)this.decel=Math.min(1.3,this.decel+.45+(this.prevThrottle-thr)*2.2);if(shiftCut>.55&&rpm>3000&&this.rand()>.99972)this.limiterPop=Math.min(1.1,this.limiterPop+.12);
+    this.prevThrottle=thr;
+
+    for(let i=0;i<N;i++){
+      const p0=this.phase;
+      const rippleWave=Math.sin(2*Math.PI*this.phase/meanInterval);
+      this.phase+=baseDegPer*(1+torqueRipple*rippleWave);
+      let wrap=false;
+      if(this.phase>=cycle){this.phase-=cycle;wrap=true;}
+
+      let fireIndex=-1,intakeIndex=-1;
+      if(active&&rpm>80){
+        for(let e=0;e<events.length;e++){
+          if(this.crossed(events[e],p0,this.phase,wrap)){fireIndex=e;break;}
+        }
+        /* Four-stroke intake event is roughly one crank revolution away from combustion TDC;
+           the RM125 two-stroke intake event is modeled half a crank revolution from combustion. */
+        for(let e=0;e<events.length;e++){
+          const ia=this.s.twoStroke?(events[e]+180)%cycle:(events[e]+360)%cycle;
+          if(this.crossed(ia,p0,this.phase,wrap)){intakeIndex=e;break;}
+        }
+      }
+
+      if(fireIndex>=0){
+        this.eventCounter++;
+        const phaseT=((currentFrame+i)/sr*limHz)%1;
+        /* Hard limiters cut individual cylinder events rather than gating the entire engine with one oscillator.
+           Rotating the skipped event keeps the texture tied to the actual firing cadence. */
+        const fuelCut=limiter&&this.s.limiterMode==='fuel'&&((this.eventCounter%3)===0);
+        const ignCut=limiter&&this.s.limiterMode==='ignition'&&((this.eventCounter%2)===0);
+        const softCut=limiter&&this.s.limiterMode==='soft'&&this.rand()<clampW((rpm-this.s.redline*.968)/(this.s.redline*.035),0,.82);
+        const idleZone=thr<.055&&rpm<(this.s.idleRpm||1200)*1.35;
+        const idleMiss=idleZone&&this.rand()<((this.s.idleMiss||0)*(this.s.twoStroke?.18:.018));
+        const cut=fuelCut||ignCut||softCut||idleMiss;
+
+        /* Small stochastic pressure variation is intentional: real combustion is not cycle-identical.
+           It is strongest at rough idle / aggressive overlap and diminishes with load and cylinder count. */
+        this.cycleStrength=clampW(1+(this.noise()*cycleVar),.78,1.18);
+        const modeScale=this.s.mode==='cranking'?.15:(this.s.mode==='catching'?.58:1);
+        const dynLoad=clampW(this.s.load/100,0,1);const combustionDemand=clampW(thr*.38+dynLoad*.62+shiftBlip*.26,0,1);const loadAmp=(.22+.78*Math.pow(combustionDemand,.58))*(1-shiftCut*.93);
+        const twoStroke=!!this.s.twoStroke;
+        const idlePunch=1+clampW(1-thr/.12,0,1)*(this.s.idleJitter||0)*5.5;const pulseAmp=modeScale*loadAmp*sizeGain*(.88+comp*.30)*this.cycleStrength*(twoStroke?1.12:1)*idlePunch;
+        const bank=banks[fireIndex]||((fireIndex&1)?'R':'L');
+
+        if(!cut){
+          const edge=pulseAmp*(1.0+comp*.42)*(this.s.pulseSharp||1)*(twoStroke?1.12:1);
+          const burst=pulseAmp*(.20+.30*openFactor)*(1-muf*.45)*(this.s.burstScale||1)*(twoStroke?1.42:1);
+          this.bankPulse(bank,edge,burst);
+        }else if(ignCut){
+          /* Ignition cut can leave mixture for afterfire; store energy for a later exhaust pop. */
+          this.limiterPop=Math.min(1.8,this.limiterPop+(.10+.16*thr)*(this.s.backfireScale||.5));
+        }
+      }
+
+      if(intakeIndex>=0&&combustion){
+        /* Intake-valve event. The sharp component is valve opening / runner depression; the slower
+           component is cylinder filling. Cam overlap increases the edge and high-order content. */
+        const air=Math.pow(thr+.018,.60)*Math.min(1.32,.20+rpm/3300);
+        const pulse=air*(.30+.38*cam)*sizeGain*(this.s.intakeScale||1)*(this.s.twoStroke?.92:1)*(1+vtecAmount*.10);
+        this.intFast+=pulse*(1.05+.24*cam);
+        this.intSlow+=pulse*.82;
+        this.intVortex+=pulse*(.38+.22*cam);
+        this.valveTick+=pulse*.18*(this.s.valveScale||1);
+      }
+
+      if(fireIndex>=0)this.valveTick+=.018*(this.s.valveScale||1);
+
+      if(this.decel>.02&&rpm>2200&&thr<.12&&this.rand()>(.99955-this.decel*.00062*(this.s.backfireScale||.5))){
+        const pop=(.40+.52*this.rand())*(.65+(this.s.backfireScale||.5));
+        this.bankPulse((this.rand()>.5?'L':'R'),pop,pop*.65);
+        this.decel*=.68;
+      }
+      if(this.limiterPop>.02&&this.rand()>.99958){
+        const pop=.55+.55*this.limiterPop;
+        this.bankPulse((this.rand()>.5?'L':'R'),pop,pop*.82);
+        this.limiterPop*=.55;
+      }
+
+      this.fastL*=aFast;this.fastR*=aFast;this.fastC*=aFast;
+      this.slowL*=aSlow;this.slowR*=aSlow;this.slowC*=aSlow;
+      this.burstL*=aBurst;this.burstR*=aBurst;this.burstC*=aBurst;
+      this.intFast*=aIntFast;this.intSlow*=aIntSlow;this.intVortex*=aIntVortex;
+      this.decel*=.99993;this.limiterPop*=.99994;
+      this.valveTick*=.965;this.shiftClack*=.935;this.shiftClunk*=.985;this.shiftSpark*=.975;
+
+      const rawNoise=this.noise();
+      this.noiseLP+=.11*(rawNoise-this.noiseLP);
+      const hiss=rawNoise-this.noiseLP;
+      /* Two one-pole states form a broad but coloured turbulent band. This is intentionally quiet:
+         it represents throttle/runner turbulence, not the actual induction pulse. */
+      this.intTurbFast+=.095*(rawNoise-this.intTurbFast);
+      this.intTurbSlow+=.010*(rawNoise-this.intTurbSlow);
+      const intakeTurb=this.intTurbFast-this.intTurbSlow;
+
+      /* Bipolar blow-down pulse: fast pressure rise followed by a slower rarefaction tail. */
+      const srcL=(this.fastL-this.slowL*.92)+hiss*this.burstL*.22;
+      const srcR=(this.fastR-this.slowR*.92)+hiss*this.burstR*.22;
+      const srcC=(this.fastC-this.slowC*.92)+hiss*this.burstC*.22;
+
+      const uelL=this.s.uel?1.24:.992,uelR=this.s.uel?.79:1.008;
+      const qL=this.quarterWave(srcL+srcC*.5,this.waveL,this.wiL,pipe*uelL,gasC,feedback,'dampL');this.wiL=(this.wiL+1)%this.waveL.length;
+      const qR=this.quarterWave(srcR+srcC*.5,this.waveR,this.wiR,pipe*uelR,gasC,feedback,'dampR');this.wiR=(this.wiR+1)%this.waveR.length;
+
+      /* Odd quarter-wave modes. High modes are deliberately less resonant and are attenuated by muffling. */
+      const ex3=(this.s.mode3||.42)*(1+vtecAmount*.18),ex5=(this.s.mode5||.18)*(1+vtecAmount*.28);
+      const modeL=this.qRes(qL+srcL*.28,this.rL1,fPipe/uelL,qBase)+ex3*this.qRes(qL,this.rL3,(fPipe/uelL)*3,qHigh)+ex5*this.qRes(qL,this.rL5,(fPipe/uelL)*5,qHigh*.72);
+      const modeR=this.qRes(qR+srcR*.28,this.rR1,fPipe/uelR,qBase)+ex3*this.qRes(qR,this.rR3,(fPipe/uelR)*3,qHigh)+ex5*this.qRes(qR,this.rR5,(fPipe/uelR)*5,qHigh*.72);
+      const branch=modeL+modeR+(srcC*.18);
+
+      const qC=this.quarterWave(branch,this.waveC,this.wiC,collector,gasC,feedback*.78,'dampC');this.wiC=(this.wiC+1)%this.waveC.length;
+      const collectorModes=this.qRes(qC+branch*.20,this.rC1,fCollector,qBase*.88)+.32*this.qRes(qC,this.rC3,fCollector*3,qHigh*.86)+.12*this.qRes(qC,this.rC5,fCollector*5,qHigh*.58);
+
+      let exhaust=(branch*.58+collectorModes*.84+qC*.18);
+      if(this.s.twoStroke&&(this.s.chamberScale||0)>0){
+        const tune=Math.max(6500,this.s.chamberTune||10500),band=Math.exp(-Math.pow((rpm-tune)/(tune*.28),2));
+        const chamberFreq=Math.min(sr*.40,fPipe*4.25);
+        const chamberExcite=.14+.86*band;const chamber=this.qRes(branch+srcC*.26,this.rTS,chamberFreq,4.5)*(this.s.chamberScale||1)*chamberExcite;
+        exhaust+=chamber*(.38+.22*band);
+      }
+      const tailCut=1100+openFactor*6200+thr*3600-muf*2700;
+      const tailA=1-Math.exp(-2*Math.PI*Math.max(450,tailCut)/sr);
+      this.tailLP+=tailA*(exhaust-this.tailLP);
+      exhaust=this.tailLP;
+
+      /* Intake acoustics: valve-flow pulse -> airbox/plenum body + odd runner modes.
+         The runner modes use the same quarter-wave family as a real open intake tract. A quiet,
+         coloured turbulence term appears mostly at part throttle; wide-open intake is pulse/resonance dominated. */
+      const intakePulse=this.intFast-this.intSlow*.82;
+      const intakeEdge=Math.tanh(intakePulse*(1.45+cam*.8));
+      const fHelm=clampW(82+fIntake*.20+cylCount*5,95,360);
+      const intakeQ=clampW((2.4+cam*1.35+(this.s.intake/100)*.65)*(this.s.intakeBright||1),1.6,7.5);
+      const plenumQ=clampW(1.35+cam*.65,1.1,2.8);
+      const runner1=this.qRes(intakePulse+intakeEdge*.16,this.rI1,fIntake,intakeQ);
+      const runner3=this.qRes(intakeEdge,this.rI3,Math.min(sr*.42,fIntake*3),intakeQ*.58);
+      const runner5=this.qRes(intakeEdge,this.rI5,Math.min(sr*.42,fIntake*5),intakeQ*.38);
+      const plenum=this.qRes(this.intSlow*.24+intakePulse*.10,this.rIH,fHelm,plenumQ);
+      const plateFactor=4*thr*(1-thr);
+      const turbulence=intakeTurb*this.intVortex*(.012+.032*plateFactor)*Math.min(1,rpm/4200);
+      const bark=intakeEdge*(.045+.075*Math.pow(thr,.7))*(.55+.45*Math.min(1,rpm/6500));
+      const reed=this.s.twoStroke?this.qRes(intakeEdge*this.intVortex,this.rI5,Math.min(sr*.40,fIntake*7.2),2.1)*(this.s.reedScale||1)*.22:0;
+      const intake=(plenum*.62+runner1+runner3*(this.s.int3||.30)*(this.s.intakeBright||1)*(1+vtecAmount*.18)+runner5*(this.s.int5||.11)*(this.s.intakeBright||1)*(1+vtecAmount*.30)+bark*(1+vtecAmount*.12)+turbulence+reed)*(this.s.intakeScale||1);
+
+      this.crankPhase+=2*Math.PI*crankHz/sr;if(this.crankPhase>Math.PI*2)this.crankPhase-=Math.PI*2;
+      const camPhase=this.crankPhase*.5;
+      const gearOrder=(12+cylCount*1.1)*(1+Math.max(0,this.s.gear||0)*.055);
+      const gearPhase=gearOrder*this.crankPhase;
+      const mechBase=this.s.twoStroke?(Math.sin(this.crankPhase)*.018+Math.sin(this.crankPhase*2)*.010+Math.sin(gearPhase)*.010):(Math.sin(this.crankPhase)*.020+Math.sin(this.crankPhase*2)*.030+Math.sin(camPhase*cylCount)*.018+Math.sin(gearPhase)*.012);
+      const mechNoise=hiss*(.018+.020*cam);
+      const pneumatic=Math.sin(this.crankPhase*(cylCount*4+5))*.008*(this.s.pneumaticScale||1)*Math.pow(clampW(rpm/Math.max(5000,this.s.redline),0,1),1.8);
+      const chainWhine=Math.sin(2*Math.PI*(90+(this.s.roadSpeed||0)*52)*(currentFrame+i)/sr)*(.004+.003*Math.max(0,this.s.gear||0))*(this.s.gearScale||1);
+      /* Shift hardware is transient-only. Keeping it below the continuous engine orders avoids the
+         metallic toy-like layer introduced in v7 while preserving a real dog-engagement tick. */
+      const clackNoise=this.noise();
+      const clack=this.qRes(this.shiftClack*(.50+.30*clackNoise),this.rClack1,1750,2.8)+.42*this.qRes(this.shiftClack,this.rClack2,3450,2.0);
+      const clunk=this.qRes(this.shiftClunk,this.rClunk,235,1.05);
+      const shiftHardware=clack*.20+clunk*.24;
+      const mechanical=(mechBase+mechNoise+chainWhine+pneumatic+shiftHardware)*Math.min(1.1,.18+rpm/3500)*(this.s.mechScale||1)*(1+vtecAmount*.08);
+      if(this.shiftSpark>.015&&this.rand()>.9975)this.limiterPop=Math.min(1.8,this.limiterPop+.018*(this.s.shiftPopScale||.5));
+
+      let starterS=0;
+      if(starter){
+        const t=(currentFrame+i)/sr;
+        const starterHz=82+rpm*.12;
+        starterS=(Math.sin(2*Math.PI*starterHz*t)+.34*Math.sin(2*Math.PI*starterHz*7.2*t))* .035+hiss*.018;
+      }
+
+      let y=exhaust*exMix*.48*(this.s.exhaustGain||1)+intake*inMix*.34+mechanical*mechMix*.72+starterS;
+      const acousticLoudness=.55+2.4*Math.pow(thr,.70)+.50*Math.sqrt(clampW(rpm/Math.max(1000,this.s.redline),0,1));
+      y*=acousticLoudness;
+      /* 25 Hz DC blocker. */
+      const hpA=Math.exp(-2*Math.PI*25/sr);
+      this.outHPy=hpA*(this.outHPy+y-this.outHPx);this.outHPx=y;y=this.outHPy;
+      /* Gentle asymmetric saturation gives pressure-wave density without turning every engine into fuzz. */
+      const absY=Math.abs(y);
+      this.levelEnv+=(absY>this.levelEnv?.025:.0015)*(absY-this.levelEnv);
+      const safety=1/(1+Math.max(0,this.levelEnv-.86)*.48);
+      y*=safety;
+      const drive=.84+(1-muf)*.10+thr*.055;
+      y=Math.tanh(y*drive)*.78;
+      if(this.s.muted||this.s.mode==='off')y=0;
+
+      /* Keep bank difference in stereo at the tailpipe, but do not over-pan a mono-ish exhaust. */
+      const branchDiff=Math.tanh((modeL-modeR)*.35)*exMix*.055*(this.s.bankStereo||1);
+      const pan=.010*Math.sin(this.crankPhase*.5);
+      L[i]=(y+branchDiff)*(1-pan);
+      R[i]=(y-branchDiff)*(1+pan);
+    }
+
+    if(this.record){
+      this.recL.push(new Float32Array(L));this.recR.push(new Float32Array(R));this.recCount+=N;
+      if(this.recCount>=4096){
+        this.port.postMessage({type:'pcm',l:this.recL,r:this.recR},[...this.recL.map(a=>a.buffer),...this.recR.map(a=>a.buffer)]);
+        this.recL=[];this.recR=[];this.recCount=0;
+      }
+    }
+    return true;
+  }
+}
+function clampW(v,a,b){return Math.max(a,Math.min(b,v));}
+function smooth(a,b,x){const t=clampW((x-a)/(b-a),0,1);return t*t*(3-2*t);}
+registerProcessor('engine-processor',EngineProcessor);
+`;
+class AudioEngine{
+  constructor(){this.ctx=null;this.node=null;this.analyser=null;this.master=null;this.comp=null;this.filter=null;this.presence=null;this.wet=null;this.dry=null;this.convolver=null;this.spatialDelay=null;this.spatialAir=null;this.spatialGain=null;this.spatialPanner=null;this.mode='none';this.pushTimer=null;this.fallback=null;this.pcmL=[];this.pcmR=[];this.recStart=0;this.irCache={};this.currentIR='';this.listenerReverbScale=1;this.flybyVoices=[];this.sceneNodes=[];this.roadNoise=null;this.roadGain=null;this.roadLP=null;this.roadHP=null}
+  async init(){if(this.ctx)return;this.ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:0.03});this.master=this.ctx.createGain();this.master.gain.value=CONFIG.audio.master;this.comp=this.ctx.createDynamicsCompressor();this.comp.threshold.value=-3;this.comp.knee.value=10;this.comp.ratio.value=3.5;this.comp.attack.value=.005;this.comp.release.value=.14;this.filter=this.ctx.createBiquadFilter();this.filter.type='lowpass';this.filter.frequency.value=16000;this.filter.Q.value=.2;this.presence=this.ctx.createBiquadFilter();this.presence.type='peaking';this.presence.frequency.value=180;this.presence.Q.value=.85;this.presence.gain.value=0;this.spatialDelay=this.ctx.createDelay(2);this.spatialDelay.delayTime.value=0;this.spatialAir=this.ctx.createBiquadFilter();this.spatialAir.type='lowpass';this.spatialAir.frequency.value=18000;this.spatialAir.Q.value=.15;this.spatialGain=this.ctx.createGain();this.spatialGain.gain.value=1;this.spatialPanner=this.ctx.createStereoPanner?this.ctx.createStereoPanner():this.ctx.createGain();if(this.spatialPanner.pan)this.spatialPanner.pan.value=0;this.dry=this.ctx.createGain();this.wet=this.ctx.createGain();this.convolver=this.ctx.createConvolver();this.analyser=this.ctx.createAnalyser();this.analyser.fftSize=CONFIG.audio.fftSize;this.analyser.smoothingTimeConstant=.68;
+    this.roadGain=this.ctx.createGain();this.roadGain.gain.value=0;this.roadHP=this.ctx.createBiquadFilter();this.roadHP.type='highpass';this.roadHP.frequency.value=90;this.roadLP=this.ctx.createBiquadFilter();this.roadLP.type='lowpass';this.roadLP.frequency.value=3200;
+    const noiseBuf=this.ctx.createBuffer(1,this.ctx.sampleRate*2,this.ctx.sampleRate),nd=noiseBuf.getChannelData(0);let nz=0;for(let i=0;i<nd.length;i++){const w=Math.random()*2-1;nz=.985*nz+.15*w;nd[i]=(w*.58+nz*.42)*.34;}this.roadNoise=this.ctx.createBufferSource();this.roadNoise.buffer=noiseBuf;this.roadNoise.loop=true;this.roadNoise.connect(this.roadHP).connect(this.roadLP).connect(this.roadGain);this.roadNoise.start();
+    try{if(!this.ctx.audioWorklet)throw Error('AudioWorklet unavailable');const blob=new Blob([WORKLET_CODE],{type:'application/javascript'});const url=URL.createObjectURL(blob);await this.ctx.audioWorklet.addModule(url);URL.revokeObjectURL(url);this.node=new AudioWorkletNode(this.ctx,'engine-processor',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2]});this.node.port.onmessage=e=>this.onWorkletMessage(e.data);this.node.connect(this.filter);this.mode='worklet';$('#audioModeBadge').textContent='AUDIOWORKLET DSP';}
+    catch(err){console.warn('AudioWorklet fallback:',err);this.fallback=new FallbackSynth(this.ctx,this.filter);this.mode='fallback';$('#audioModeBadge').textContent='NATIVE NODE FALLBACK';}
+    this.filter.connect(this.presence);
+    for(let i=0;i<3;i++){
+      const sourceFilter=this.ctx.createBiquadFilter(),sourcePresence=this.ctx.createBiquadFilter(),delay=this.ctx.createDelay(2),air=this.ctx.createBiquadFilter(),gain=this.ctx.createGain(),pan=this.ctx.createStereoPanner?this.ctx.createStereoPanner():this.ctx.createGain(),groundDelay=this.ctx.createDelay(.12),groundLP=this.ctx.createBiquadFilter(),groundGain=this.ctx.createGain();
+      sourceFilter.type='lowpass';sourceFilter.frequency.value=15000;sourceFilter.Q.value=.18;sourcePresence.type='peaking';sourcePresence.frequency.value=900;sourcePresence.Q.value=.8;sourcePresence.gain.value=-1;
+      delay.delayTime.value=0;air.type='lowpass';air.frequency.value=18000;air.Q.value=.12;gain.gain.value=0;if(pan.pan)pan.pan.value=0;groundLP.type='lowpass';groundLP.frequency.value=4500;groundGain.gain.value=0;
+      let sceneNode=null,sceneFallback=null;
+      if(this.mode==='worklet'){sceneNode=new AudioWorkletNode(this.ctx,'engine-processor',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2]});sceneNode.connect(sourceFilter);}
+      else{sceneFallback=new FallbackSynth(this.ctx,sourceFilter);}
+      sourceFilter.connect(sourcePresence).connect(delay);delay.connect(air).connect(gain).connect(pan);pan.connect(this.dry);pan.connect(this.convolver);pan.connect(groundDelay).connect(groundLP).connect(groundGain).connect(this.dry);
+      const voice={sourceFilter,sourcePresence,delay,air,gain,pan,groundDelay,groundLP,groundGain,detune:(i-1)*.003,sceneNode,sceneFallback,lastConfig:''};
+      this.flybyVoices.push(voice);this.sceneNodes.push(sceneNode);
+    }
+    this.roadGain.connect(this.dry);this.roadGain.connect(this.convolver);
+    this.presence.connect(this.spatialDelay);this.spatialDelay.connect(this.spatialAir);this.spatialAir.connect(this.spatialGain);this.spatialGain.connect(this.spatialPanner);this.spatialPanner.connect(this.dry);this.spatialPanner.connect(this.convolver);this.convolver.connect(this.wet);this.dry.connect(this.comp);this.wet.connect(this.comp);this.comp.connect(this.master);this.master.connect(this.analyser);this.analyser.connect(this.ctx.destination);this.setListener(state.listener,true);this.setReverb(state.reverbEnv,state.reverbAmount,true);this.resetSpatial(true);this.pushTimer=setInterval(()=>this.pushConfig(),1000/CONFIG.audio.workletPushHz);state.audioReady=true;}
+  makeIR(env){
+    if(this.irCache[env])return this.irCache[env];
+    const profiles={
+      dry:{seconds:.08,decay:8,early:[]},
+      garage:{seconds:.72,decay:3.8,early:[[.018,.55],[.031,.38],[.047,.28],[.071,.18],[.103,.12]]},
+      track:{seconds:1.35,decay:2.7,early:[[.065,.18],[.118,.11],[.205,.07],[.31,.045]]},
+      tunnel:{seconds:2.15,decay:2.15,early:[[.026,.48],[.054,.38],[.083,.31],[.121,.25],[.166,.20],[.235,.15],[.33,.11]]}
+    };
+    const q=profiles[env]||profiles.track,sr=this.ctx.sampleRate,n=Math.floor(sr*q.seconds),b=this.ctx.createBuffer(2,n,sr);
+    for(let c=0;c<2;c++){
+      const d=b.getChannelData(c),stereo=(c?1:-1);
+      for(let i=0;i<n;i++){
+        const t=i/sr,nt=i/n;
+        const density=(Math.random()*2-1)*Math.pow(1-nt,q.decay)*(.11+.13*Math.min(1,t/.08));
+        d[i]=density;
+      }
+      for(const [sec,amp] of q.early){
+        const i=Math.min(n-1,Math.floor(sr*(sec+c*.0017)));
+        d[i]+=amp*(1+stereo*.06);
+        if(i+1<n)d[i+1]-=amp*.28;
+      }
+    }
+    this.irCache[env]=b;return b;
+  }
+  async resume(){await this.init();if(this.ctx.state!=='running')await this.ctx.resume();}
+  pushConfig(force=false){if(!this.ctx)return;const cfg=crankCfg(),ex=EXHAUSTS[state.exhaust];const snd=refCfg().sound||{};const data={rpm:state.rpm,throttle:state.throttle/100,load:state.load,redline:actualLimiterRpm(),compression:state.compression,cam:state.cam,flywheel:state.flywheel,muffling:state.muffling,intake:state.intake,bore:state.bore,stroke:state.stroke,exhaustMix:state.exhaustMix,intakeMix:state.intakeMix,mechanicalMix:state.mechanicalMix,muted:state.muted,mode:(state.flybyActive?'off':state.mode),cycle:layoutCfg().cycle,events:cfg.events,banks:cfg.banks||[],pipe:ex.pipe,collector:ex.collector,reflection:ex.reflection,bright:ex.bright,layout:state.layout,limiterMode:state.limiter,exhaustC:exhaustSoundSpeed(),uel:!!cfg.uel,shiftCut:state.shiftCut,shiftBlip:state.shiftBlip,gear:state.gear,roadSpeed:state.speed,cylCount:layoutCfg().cyl,twoStroke:!!refCfg().twoStroke,pulseSharp:snd.pulseSharp||1,pulseBody:snd.pulseBody||1,burstScale:snd.burstScale||1,pipeScale:snd.pipeScale||1,collectorScale:snd.collectorScale||1,qScale:snd.qScale||1,intakeScale:snd.intakeScale||1,intakeBright:snd.intakeBright||1,mechScale:snd.mechScale||1,gearScale:snd.gearScale||1,bankStereo:snd.bankStereo||1,exhaustGain:snd.exhaustGain||1,reedScale:snd.reedScale||1,pneumaticScale:snd.pneumaticScale||1,mode3:snd.mode3??.42,mode5:snd.mode5??.18,int3:snd.int3??.30,int5:snd.int5??.11,cycleVarScale:snd.cycleVarScale||1,vtecRpm:snd.vtecRpm||0,vtecScale:snd.vtecScale||0,chamberScale:snd.chamberScale||0,chamberTune:snd.chamberTune||10500,idleRpm:idleRpm(),idleJitter:snd.idleJitter??.01,idleMiss:snd.idleMiss??0,backfireScale:snd.backfireScale??.5,shiftPopScale:snd.shiftPopScale??.5,valveScale:snd.valveScale??1,primaryScale:snd.primaryScale??1,chainScale:snd.chainScale??1,clutchScale:snd.clutchScale??1,limiterDrop:snd.limiterDrop??140,limiterHz:snd.limiterHz??14,limiterActive:!!state.limiterActive};if(this.mode==='worklet')this.node.port.postMessage({type:'state',data});else this.fallback?.update(data,force)}
+  setListener(pos,instant=false){
+    if(!this.ctx)return;
+    const t=this.ctx.currentTime,tc=instant?.001:.08;
+    const map={tailpipe:{f:15500,g:.78,pf:220,pg:-1,rv:.32},trackside:{f:10500,g:.76,pf:980,pg:-1.5,rv:1},incar:{f:3300,g:.74,pf:165,pg:6.5,rv:.45}}[pos]||{f:10500,g:.76,pf:980,pg:-1.5,rv:1};
+    this.listenerReverbScale=map.rv;
+    this.filter.frequency.setTargetAtTime(map.f,t,tc);this.presence.frequency.setTargetAtTime(map.pf,t,tc);this.presence.gain.setTargetAtTime(map.pg,t,tc);this.master.gain.setTargetAtTime(state.muted?0:map.g,t,.03);
+    this.setReverb(state.reverbEnv,state.reverbAmount,instant);
+  }
+  setReverb(env=state.reverbEnv,amount=state.reverbAmount,instant=false){
+    if(!this.ctx)return;
+    const t=this.ctx.currentTime,tc=instant?.001:.06;
+    if(this.currentIR!==env){this.convolver.buffer=this.makeIR(env);this.currentIR=env;}
+    const envScale={dry:0,garage:1.0,track:.72,tunnel:1.28}[env]??.72;
+    const wet=clamp((amount||0)/100*envScale*this.listenerReverbScale,0,.82);
+    const dry=clamp(1-wet*.22,.76,1);
+    this.wet.gain.setTargetAtTime(wet,t,tc);this.dry.gain.setTargetAtTime(dry,t,tc);
+  }
+  resetSpatial(instant=false){
+    if(!this.ctx)return;
+    const t=this.ctx.currentTime,tc=instant?.001:.035;
+    this.spatialDelay.delayTime.setTargetAtTime(0,t,tc);this.spatialGain.gain.setTargetAtTime(1,t,tc);this.spatialAir.frequency.setTargetAtTime(18000,t,tc);if(this.spatialPanner.pan)this.spatialPanner.pan.setTargetAtTime(0,t,tc);
+    for(const v of this.flybyVoices){v.gain.gain.setTargetAtTime(0,t,tc);v.groundGain.gain.setTargetAtTime(0,t,tc);if(v.sceneNode)v.sceneNode.port.postMessage({type:'state',data:{mode:'off',muted:true}})}
+    if(this.roadGain)this.roadGain.gain.setTargetAtTime(0,t,tc);
+  }
+  setFlybyFleet(bikes,instant=false){
+    if(!this.ctx)return;
+    const t=this.ctx.currentTime,tc=instant?.001:.018,c=CONFIG.physics.airSound;
+    this.spatialGain.gain.setTargetAtTime(0,t,tc);
+    const activeCount=Math.max(1,bikes.filter(Boolean).length),fleetNorm=1/Math.sqrt(activeCount);
+    let proximity=0,maxSpeed=0;
+    this.flybyVoices.forEach((v,i)=>{
+      const b=bikes[i];
+      if(!b){v.gain.gain.setTargetAtTime(0,t,tc);v.groundGain.gain.setTargetAtTime(0,t,tc);if(v.sceneNode)v.sceneNode.port.postMessage({type:'state',data:{mode:'off',muted:true}});return;}
+      this.updateFlybyEngine(i,b,false);
+      const delay=clamp(b.distance/c+Math.max(0,v.detune)*.004,0,1.8);
+      const pressure=clamp(8/Math.max(8,b.distance),.025,1);
+      const airCut=clamp(19000/(1+b.distance/92),2600,18500);
+      const pan=clamp(b.x/48,-1,1);
+      const extra=Math.max(.0015,(Math.hypot(b.x,b.offset+3.2)-b.distance)/c+.0025);
+      const near=clamp(1-b.distance/70,0,1);
+      v.delay.delayTime.setTargetAtTime(delay,t,tc);v.air.frequency.setTargetAtTime(airCut,t,.022);v.gain.gain.setTargetAtTime(pressure*(.76+b.gainVar)*fleetNorm,t,tc);if(v.pan.pan)v.pan.pan.setTargetAtTime(pan,t,.018);
+      v.groundDelay.delayTime.setTargetAtTime(extra,t,.02);v.groundLP.frequency.setTargetAtTime(clamp(5200-b.distance*24,1400,5200),t,.03);v.groundGain.gain.setTargetAtTime(-pressure*(.055+.08*near),t,.025);
+      proximity+=near;maxSpeed=Math.max(maxSpeed,b.speed||0);
+    });
+    if(this.roadGain){const g=clamp((maxSpeed/90)*(.012+.035*Math.min(1,proximity)),0,.09);this.roadGain.gain.setTargetAtTime(g,t,.04);this.roadLP.frequency.setTargetAtTime(clamp(1300+maxSpeed*28,1800,5200),t,.05)}
+  }
+  triggerEvent(kind,intensity=1,direction=''){
+    if(!this.ctx)return;
+    if(this.mode==='worklet'&&this.node)this.node.port.postMessage({type:'event',kind,intensity,direction});
+    else this.fallback?.triggerEvent?.(kind,intensity,direction);
+  }
+  triggerFlybyEvent(index,kind,intensity=1,direction=''){
+    const v=this.flybyVoices[index];if(!v)return;
+    if(v.sceneNode)v.sceneNode.port.postMessage({type:'event',kind,intensity,direction});else v.sceneFallback?.triggerEvent?.(kind,intensity,direction);
+  }
+  updateFlybyEngine(index,bike,force=false){
+    const v=this.flybyVoices[index];if(!v||!bike)return;const data=audioDataForBike(bike.name,bike);
+    if(v.sceneNode)v.sceneNode.port.postMessage({type:'state',data});else v.sceneFallback?.update(data,force);
+  }
+  setMuted(){if(!this.ctx)return;const g=state.muted?0:({tailpipe:.78,trackside:.76,incar:.74}[state.listener]||.76);this.master.gain.setTargetAtTime(g,this.ctx.currentTime,.025)}
+  startRecording(){if(this.mode!=='worklet'){toast('WAV capture needs AudioWorklet in this browser.');return false}this.pcmL=[];this.pcmR=[];this.recStart=performance.now();this.node.port.postMessage({type:'record',on:true});return true}
+  stopRecording(){if(this.mode!=='worklet')return;this.node.port.postMessage({type:'record',on:false});setTimeout(()=>this.exportWav(),100)}
+  onWorkletMessage(d){if(d.type==='pcm'){this.pcmL.push(...d.l);this.pcmR.push(...d.r)}}
+  exportWav(){const sr=this.ctx.sampleRate,total=this.pcmL.reduce((n,a)=>n+a.length,0);if(!total){toast('No audio captured.');return}const L=new Float32Array(total),R=new Float32Array(total);let o=0;for(let i=0;i<this.pcmL.length;i++){L.set(this.pcmL[i],o);R.set(this.pcmR[i],o);o+=this.pcmL[i].length}const buf=encodeWav(L,R,sr),blob=new Blob([buf],{type:'audio/wav'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`enginelab-${state.layout}-${Date.now()}.wav`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('WAV exported.');}
+}
+class FallbackSynth{
+  constructor(ctx,dest){
+    this.ctx=ctx;this.dest=dest;this.s=null;this.signature='';this.sources=[];this.baseCycleHz=10;
+    this.out=ctx.createGain();this.out.gain.value=0;
+    this.tone=ctx.createBiquadFilter();this.tone.type='lowpass';this.tone.frequency.value=9000;this.tone.Q.value=.25;
+    this.sum=ctx.createGain();
+    this.collector=ctx.createBiquadFilter();this.collector.type='bandpass';this.collector.frequency.value=260;this.collector.Q.value=2.2;
+    this.collectorWet=ctx.createGain();this.collectorWet.gain.value=.36;this.collectorDry=ctx.createGain();this.collectorDry.gain.value=.68;
+    this.sum.connect(this.collectorDry).connect(this.tone);this.sum.connect(this.collector).connect(this.collectorWet).connect(this.tone);this.tone.connect(this.out).connect(dest);
+    this.left=this.makeBranch(-.08);this.right=this.makeBranch(.08);
+    this.intakeInput=ctx.createGain();this.intakeGain=ctx.createGain();this.intakeGain.gain.value=.08;
+    this.intakeFilters=[];this.intakeModeGains=[];
+    for(let i=0;i<4;i++){const f=ctx.createBiquadFilter(),g=ctx.createGain();f.type='bandpass';f.frequency.value=[145,650,1950,3250][i];f.Q.value=[1.5,2.8,1.7,1.1][i];g.gain.value=[.58,1,.28,.10][i];this.intakeInput.connect(f).connect(g).connect(this.intakeGain);this.intakeFilters.push(f);this.intakeModeGains.push(g)}
+    this.intakeGain.connect(this.sum);
+  }
+  makeBranch(pan){
+    const input=this.ctx.createGain(),p=this.ctx.createStereoPanner?this.ctx.createStereoPanner():this.ctx.createGain();if(p.pan)p.pan.value=pan;
+    const fs=[],gs=[];for(let i=0;i<3;i++){const f=this.ctx.createBiquadFilter(),g=this.ctx.createGain();f.type='bandpass';f.Q.value=i?2.2:3.2;g.gain.value=[.66,.25,.10][i];input.connect(f).connect(g).connect(p);fs.push(f);gs.push(g)}p.connect(this.sum);return {input,filters:fs,gains:gs};
+  }
+  triggerEvent(kind,intensity=1,direction=''){
+    const t=this.ctx.currentTime;const osc=this.ctx.createOscillator(),g=this.ctx.createGain(),bp=this.ctx.createBiquadFilter();
+    osc.type='triangle';osc.frequency.value=kind==='shiftEngage'||kind==='downshift'?2100:420;bp.type='bandpass';bp.frequency.value=kind==='downshift'?520:1900;bp.Q.value=2.1;
+    g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.055*Math.max(.2,intensity),t+.002);g.gain.exponentialRampToValueAtTime(.001,t+.045);osc.connect(bp).connect(g).connect(this.sum);osc.start(t);osc.stop(t+.055);
+  }
+  pulseBuffer(which,intake=false){
+    const sr=this.ctx.sampleRate,cycles=4,n=8192,b=this.ctx.createBuffer(1,n,sr),d=b.getChannelData(0),events=this.s.events||[0],banks=this.s.banks||[],cycle=this.s.cycle||720;
+    this.baseCycleHz=cycles/(n/sr);
+    const shape=intake?[.08,.34,.72,1,.82,.48,.16,-.08,-.18,-.12,-.045]:[1,.66,.18,-.24,-.19,-.08];
+    for(let c=0;c<cycles;c++){
+      const vary=1+(.025*Math.sin((c+1)*2.13)+.012*Math.cos((c+1)*4.71));
+      for(let e=0;e<events.length;e++){
+        let a=intake?(this.s.twoStroke?(events[e]+180)%cycle:(events[e]+360)%cycle):events[e];
+        const bank=banks[e]||((e&1)?'R':'L');
+        let amp=intake?1:(bank==='C'?.72:(bank===which?1:0));if(!amp)continue;
+        const frac=(c+(a/cycle))/cycles,idx=Math.floor(frac*n)%n;
+        for(let k=0;k<shape.length;k++)d[(idx+k)%n]+=shape[k]*amp*vary;
+      }
+    }
+    return b;
+  }
+  rebuild(){
+    for(const s of this.sources){try{s.stop()}catch{}try{s.disconnect()}catch{}}this.sources=[];
+    const t=this.ctx.currentTime+.015;
+    const mk=(buf,target)=>{const s=this.ctx.createBufferSource();s.buffer=buf;s.loop=true;s.connect(target);s.start(t);this.sources.push(s);return s};
+    this.srcL=mk(this.pulseBuffer('L',false),this.left.input);this.srcR=mk(this.pulseBuffer('R',false),this.right.input);this.srcI=mk(this.pulseBuffer('C',true),this.intakeInput);
+  }
+  update(d,force=false){
+    this.s=d;const sig=JSON.stringify([d.layout,d.cycle,d.events,d.banks]);if(force||sig!==this.signature||!this.srcL){this.signature=sig;this.rebuild()}
+    const t=this.ctx.currentTime,cycleHz=(Math.max(80,d.rpm)/60)*(360/(d.cycle||720)),rate=Math.max(.02,cycleHz/this.baseCycleHz);
+    for(const s of this.sources)s.playbackRate.setTargetAtTime(rate,t,.028);
+    const c=d.exhaustC||540,f0=c/(4*Math.max(.20,d.pipe*(d.pipeScale||1))),q=Math.max(.8,(3+(d.reflection||.6)*5-(d.muffling/100)*3.2)*(d.qScale||1));
+    for(const br of [this.left,this.right]){br.filters[0].frequency.setTargetAtTime(f0,t,.03);br.filters[1].frequency.setTargetAtTime(Math.min(16000,f0*3),t,.03);br.filters[2].frequency.setTargetAtTime(Math.min(18000,f0*5),t,.03);br.filters[0].Q.setTargetAtTime(q,t,.04);br.filters[1].Q.setTargetAtTime(Math.max(.7,q*.58),t,.04);br.filters[2].Q.setTargetAtTime(Math.max(.6,q*.38),t,.04)}
+    const fc=c/(4*Math.max(.18,d.collector*(d.collectorScale||1)));this.collector.frequency.setTargetAtTime(fc,t,.03);this.collector.Q.setTargetAtTime(Math.max(.8,q*.72),t,.04);
+    const runner=.12+(d.intake/100)*.43,fIntake=343/(4*runner),cyl=Math.max(1,d.cylCount||d.events.length),fHelm=clamp(82+fIntake*.20+cyl*5,95,360);
+    const iq=2.4+(d.cam/100)*1.35+(d.intake/100)*.65;
+    const ifr=[fHelm,fIntake,Math.min(15000,fIntake*3),Math.min(17000,fIntake*5)],iqs=[1.4+(d.cam/100)*.6,iq,Math.max(.8,iq*.58),Math.max(.7,iq*.38)];
+    for(let i=0;i<this.intakeFilters.length;i++){this.intakeFilters[i].frequency.setTargetAtTime(ifr[i],t,.04);this.intakeFilters[i].Q.setTargetAtTime(iqs[i],t,.04)}
+    const thr=d.throttle||0,muf=d.muffling/100,shift=clamp(d.shiftCut||0,0,1),size=Math.pow((Math.max(55,Math.PI*.25*d.bore*d.bore*d.stroke/1000))/250,.18),gain=(d.mode==='off'||d.muted)?0:(.055+.17*Math.pow(thr,.62))*size*(1-muf*.42)*(1-shift*.90)*(d.exhaustGain||1);
+    this.out.gain.setTargetAtTime(gain,t,.025);this.tone.frequency.setTargetAtTime(Math.max(700,1200+(d.bright||1)*6200+thr*3200-muf*3000+(d.gear||0)*75),t,.035);this.intakeGain.gain.setTargetAtTime((d.intakeMix/100)*(.045+.16*Math.pow(thr,.72))*(d.intakeScale||1),t,.035);
+  }
+}
+function encodeWav(L,R,sr){const n=L.length,ab=new ArrayBuffer(44+n*4),v=new DataView(ab);const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};w(0,'RIFF');v.setUint32(4,36+n*4,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);v.setUint32(24,sr,true);v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*4,true);let o=44;for(let i=0;i<n;i++){v.setInt16(o,clamp(L[i],-1,1)*32767,true);v.setInt16(o+2,clamp(R[i],-1,1)*32767,true);o+=4}return ab}
+const audio=new AudioEngine();
+
+/* -------------------------- ENGINE SIM -------------------------- */
+function idleRpm(){const r=refCfg();const camRaise=Math.max(0,state.cam-r.camBase)*1.7;return clamp(r.idle+camRaise,r.idleRange[0],r.idleRange[1]+180)}
+function effectiveInertia(){
+  /* OEM effective crank/flywheel inertias are rarely published. This maps the UI control to a plausible total rotating inertia and is explicitly an approximation. */
+  const L=displacement()/1000, massFactor=.55+state.flywheel/100*1.45;
+  return (.018+.026*Math.pow(Math.max(.12,L),.78))*massFactor;
+}
+function frictionTorque(rpm){
+  const L=displacement()/1000, w=rpm/1000;
+  return (2.0+3.1*L)+(0.22+0.18*L)*w+(0.018+0.010*L)*w*w;
+}
+function pumpingTorque(rpm,thr){
+  const L=displacement()/1000;
+  return Math.pow(1-thr,1.65)*(3.5+7.0*L)*(0.45+rpm/4500);
+}
+function updateFlyby(dt){
+  if(!state.flybyActive)return;
+  const active=[];
+  state.flybyBikes.forEach((b,idx)=>{
+    const info=bikeInfo(b.name),d=info.d,r=info.r,maxG=d.gears.length-1;
+    // A real flyby is normally under load: accelerate gently through the timing line rather than pitch-locking the motor.
+    const road=.5*CONFIG.sim.airDensity*d.cda*b.speed*b.speed+(d.massKg+CONFIG.sim.riderMassKg)*9.80665*(d.crr??CONFIG.sim.rollingCoeffBike);
+    const targetAccel=clamp(1.25-road/Math.max(120,d.massKg+80)*.045,.35,1.35);
+    b.speed+=targetAccel*dt;b.x+=b.speed*dt;b.throttle=.76+.10*clamp(1-Math.abs(b.x)/150,0,1);b.load=clamp(62+targetAccel*15,55,88);
+    if(b.shiftTimer>0){b.shiftTimer=Math.max(0,b.shiftTimer-dt);const q=1-b.shiftTimer/b.shiftDuration;b.shiftCut=b.shiftType==='seamless'?.35:(q<.65?1:1-q);if(!b.shiftApplied&&q>.46){b.gear=Math.min(maxG,b.gear+1);b.shiftApplied=true;audio.triggerFlybyEvent(idx,'shiftEngage',b.shiftType==='seamless'?.55:.85,'up');}}
+    else{b.shiftCut=0;b.shiftApplied=false;const rr=bikeRpmForSpeed(b.name,b.gear,b.speed);if(rr>Math.min(r.hpRpm*1.025,r.redline*.925)&&b.gear<maxG){const prof=b.shiftType==='seamless'?0.020:(b.shiftType==='qs'?0.055:(d.upMs||160)/1000);b.shiftTimer=prof;b.shiftDuration=prof;b.shiftApplied=false;audio.triggerFlybyEvent(idx,'shiftStart',b.shiftType==='seamless'?.45:.75,'up');}}
+    b.rpm=Math.max(r.idle,bikeRpmForSpeed(b.name,b.gear,b.speed));b.limiterActive=b.rpm>=r.redline;
+    const dist=Math.hypot(b.x,b.offset),radial=b.speed*(b.x/Math.max(.001,dist));b.distance=dist;b.radial=radial;b.doppler=CONFIG.physics.airSound/(CONFIG.physics.airSound+radial);
+    if(b.x<185)active.push(b);
+  });
+  state.flybyBikes=active;if(!active.length){stopFlyby(true);return;}
+  const closest=active.reduce((a,b)=>a.distance<b.distance?a:b);state.flybyX=closest.x;state.flybyDistance=closest.distance;state.flybyDoppler=closest.doppler;
+  audio.setFlybyFleet(active,false);
+}
+function launchFlyby(){
+  state.flybyPending=false;state.flybyActive=true;state.flybyPrevListener=state.listener;state.listener='trackside';
+  const names=[state.flybyBike1,state.flybyBike2,state.flybyBike3].slice(0,Math.max(1,Math.round(state.flybyCount))),spread=state.flybySpread,base=state.flybySpeed/3.6;
+  state.flybyBikes=names.map((name,i)=>{const info=bikeInfo(name),center=i-(names.length-1)/2,requested=base*(1+center*.006),speed=Math.min(requested,bikeFlybyMaxSpeed(name)),gear=chooseFlybyGear(name,speed);return {id:i,name,x:-155-i*spread,offset:Math.max(3.5,state.flybyOffset+center*1.15),speed,gear,rpm:bikeRpmForSpeed(name,gear,speed),throttle:.78,load:72,shiftCut:0,shiftTimer:0,shiftDuration:.05,shiftApplied:false,shiftType:info.d.shiftType,distance:0,radial:0,doppler:1,gainVar:center*.025};});
+  state.flybyBikes.forEach(b=>{b.distance=Math.hypot(b.x,b.offset);b.radial=b.speed*(b.x/b.distance);b.doppler=CONFIG.physics.airSound/(CONFIG.physics.airSound+b.radial)});
+  const first=state.flybyBikes[0];state.flybyDistance=first.distance;state.flybyDoppler=first.doppler;state.flybyX=first.x;
+  syncUI();audio.setListener('trackside',true);audio.setFlybyFleet(state.flybyBikes,true);announce('Mixed trackside flyby started');toast(`Flyby · ${names.join(' + ')}`);
+}
+async function toggleFlyby(){if(state.flybyActive||state.flybyPending){stopFlyby(false);return;}try{await audio.resume()}catch(e){return toast('Audio could not start.');}launchFlyby();}
+function stopFlyby(natural=false){state.flybyPending=false;state.flybyActive=false;state.flybyBikes=[];state.flybyX=-150;state.flybyDoppler=1;state.flybyDistance=0;audio.resetSpatial(false);if(state.flybyPrevListener){state.listener=state.flybyPrevListener;state.flybyPrevListener=null;syncUI();audio.setListener(state.listener,false);}if(!natural)toast('Flyby stopped.');}
+function gearboxRatio(gear){return totalRatio(gear)}
+function coupledRpmForGear(gear){return rpmForSpeed(gear,state.speed)}
+function syncGearSelect(){
+  const sel=$('#gearSelect');if(!sel)return;const mg=maxGear();state.gear=clamp(state.gear,0,mg);
+  const wanted=['Neutral',...Array.from({length:mg},(_,i)=>`${i+1}${(speedForRpm(i+1,actualLimiterRpm())*3.6).toFixed(0)} km/h`)];
+  if(sel.options.length!==wanted.length||[...sel.options].some((o,i)=>o.textContent!==wanted[i])){
+    sel.innerHTML='';wanted.forEach((txt,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=i?`${i} · ${txt.replace(/^\d+/,'').trim()}`:'Neutral';sel.appendChild(o)});
+  }
+  sel.value=String(state.gear);
+}
+function shiftTiming(target){
+  const d=driveCfg(),up=target>state.gear,type=d.shiftType||'bike-manual';
+  if(type==='seamless'){
+    if(up)return {up:true,type,ms:18,apply:.42,disengage:.06,reengage:.62,minCoupling:.55,blip:0};
+    return {up:false,type,ms:d.downMs||55,apply:.50,disengage:.06,reengage:.66,minCoupling:.42,blip:d.downBlip??.90};
+  }
+  if(type==='qs'){
+    if(up){const ms=quickCutMs(Math.max(1,state.gear));return {up:true,type,ms,apply:.48,disengage:.10,reengage:.72,minCoupling:.12,blip:0}}
+    return {up:false,type,ms:d.downMs||88,apply:.52,disengage:.10,reengage:.74,minCoupling:.10,blip:d.downBlip??.78};
+  }
+  if(type==='car-manual'){
+    return up?{up:true,type,ms:d.upMs||400,apply:.54,disengage:.16,reengage:.82,minCoupling:0,blip:0}:{up:false,type,ms:d.downMs||330,apply:.58,disengage:.14,reengage:.80,minCoupling:0,blip:.68};
+  }
+  return up?{up:true,type,ms:d.upMs||190,apply:.52,disengage:.16,reengage:.76,minCoupling:0,blip:0}:{up:false,type,ms:d.downMs||155,apply:.54,disengage:.13,reengage:.74,minCoupling:0,blip:.62};
+}
+function shiftCooldownMs(){const t=driveCfg().shiftType;return t==='seamless'?45:t==='qs'?CONFIG.sim.quickShiftCooldownMs:t==='car-manual'?CONFIG.sim.manualCarCooldownMs:CONFIG.sim.manualBikeCooldownMs}
+function beginShift(target){
+  target=clamp(Math.round(target),0,maxGear());if(target===state.gear||state.shifting)return false;
+  if(target===0&&state.speed>2)return false;
+  const now=performance.now();if(now-state.lastShiftAt<shiftCooldownMs())return false;
+  let targetSync=0;
+  if(target>0&&target<state.gear){targetSync=rpmForSpeed(target,state.speed);if(targetSync>actualLimiterRpm()*.985){toast('Downshift blocked · target gear would over-rev');return false}}
+  const prof=shiftTiming(target);
+  if(!prof.up&&targetSync>state.rpm){const gap=(targetSync-state.rpm)/Math.max(900,state.rpm);prof.blip=clamp((prof.blip||.65)+gap*.48,.48,1);prof.targetSync=targetSync;}
+  state.shifting=true;state.shiftFrom=state.gear;state.shiftTo=target;state.shiftElapsed=0;state.shiftApplied=false;state.shiftDuration=prof.ms/1000;state.shiftProfile=prof;state.shiftCut=prof.up?(prof.type==='seamless'?.45:1):((prof.type==='qs'||prof.type==='seamless')?.08:.18);state.shiftBlip=0;
+  audio.triggerEvent('shiftStart',prof.type==='seamless'?.28:prof.type==='qs'?.42:.52,prof.up?'up':'down');state.shiftCoupling=1;state.lastShiftAt=now;announce(`${prof.up?'Upshift':'Downshift'} to ${target||'neutral'}`);return true;
+}
+function updateShift(dt){
+  if(!state.shifting){state.shiftCut=lerp(state.shiftCut,0,1-Math.exp(-dt*40));state.shiftBlip=lerp(state.shiftBlip,0,1-Math.exp(-dt*38));state.shiftCoupling=lerp(state.shiftCoupling,1,1-Math.exp(-dt*38));return;}
+  state.shiftElapsed+=dt;const p=clamp(state.shiftElapsed/state.shiftDuration,0,1),prof=state.shiftProfile,up=prof.up,minC=prof.minCoupling??0;
+  if(p<prof.disengage)state.shiftCoupling=lerp(1,minC,smooth(0,prof.disengage,p));else if(p<prof.reengage)state.shiftCoupling=minC;else state.shiftCoupling=lerp(minC,1,smooth(prof.reengage,1,p));
+  if(up){const release=prof.type==='seamless'?.58:prof.type==='qs'?.68:.78;const cut=prof.type==='seamless'?.45:1;state.shiftCut=p<release?cut:cut*(1-smooth(release,1,p));state.shiftBlip=0;}
+  else{
+    state.shiftCut=p<.12?((prof.type==='qs'||prof.type==='seamless')?.07:.18):0;
+    const q=clamp((p-.02)/Math.max(.24,prof.reengage-.02),0,1);state.shiftBlip=Math.pow(Math.sin(Math.PI*Math.min(1,q)),.58)*prof.blip;
+    /* Rev-match before the lower ratio is engaged. This is what makes an autoblipper sound like a
+       real downshift instead of an RPM jump after the gearbox has already changed ratios. */
+    if(!state.shiftApplied&&prof.targetSync&&state.speed>.2){const pre=smooth(.06,prof.apply,p);const rate=prof.type==='seamless'?115:prof.type==='qs'?82:38;state.rpm=lerp(state.rpm,Math.min(prof.targetSync,actualLimiterRpm()*.972),(1-Math.exp(-dt*rate))*pre);}
+  }
+  if(!state.shiftApplied&&p>=prof.apply){
+    state.gear=state.shiftTo;state.shiftApplied=true;syncGearSelect();
+    audio.triggerEvent(up?'shiftEngage':'downshift',prof.type==='seamless'?.34:prof.type==='qs'?.48:.60,up?'up':'down');
+    if(up&&(prof.type==='qs'||prof.type==='seamless')&&state.throttle>45){const pop=refCfg().sound?.shiftPopScale??.4;if(pop>.35)audio.triggerEvent('backfire',pop*.28,'up');}
+    if(!up&&state.rpm>4200){const bf=refCfg().sound?.backfireScale??.3;if(bf>.55&&state.throttle<25)audio.triggerEvent('backfire',bf*.22,'down');}
+    if(state.gear>0&&state.speed>.2){const sync=Math.max(idleRpm()*.75,rpmForSpeed(state.gear,state.speed));const snap=prof.type==='seamless'?(up?.92:.96):prof.type==='qs'?(up?.70:.88):.72;state.rpm=lerp(state.rpm,sync,snap);}
+    audio.pushConfig(true);
+  }
+  if(state.shiftApplied&&state.gear>0&&state.speed>.2){const sync=Math.max(idleRpm()*.7,rpmForSpeed(state.gear,state.speed));const rate=prof.type==='seamless'?(up?85:110):prof.type==='qs'?(up?48:78):34;state.rpm=lerp(state.rpm,sync,1-Math.exp(-dt*rate));}
+  if(p>=1){state.shifting=false;state.shiftCut=0;state.shiftBlip=0;state.shiftCoupling=1;state.shiftProfile=null;toast(state.gear?`Gear ${state.gear} · ${Math.round(state.shiftDuration*1000)} ms · ${driveCfg().label}`:'Neutral');}
+}
+function simulate(dt,ts){
+  updateShift(dt);
+  const userTarget=spaceDown?100:state.targetThrottle,target=Math.max(userTarget,state.shiftBlip*100);
+  state.throttle=lerp(state.throttle,target,1-Math.exp(-dt*18));
+  state.brakeInput=lerp(state.brakeInput,brakeDown?1:0,1-Math.exp(-dt*(brakeDown?18:11)));
+  const mass=simMassKg(),brakeForce=state.brakeInput*mass*9.80665*(driveCfg().kind==='car'?1.02:.95);
+  if(state.mode==='off'){state.rpm=Math.max(0,state.rpm*Math.exp(-dt*2.2));state.speed=Math.max(0,state.speed-dt*.7);state.load=0;state.limiterActive=false;return}
+  if(state.mode==='cranking'){state.rpm=lerp(state.rpm,230+Math.sin(ts*.026)*16,1-Math.exp(-dt*11));state.load=4;return}
+  if(state.mode==='catching'){state.rpm=lerp(state.rpm,idleRpm()*1.12,1-Math.exp(-dt*7));state.load=10;return}
+  const thr=state.throttle/100,idleBase=idleRpm(),idleSnd=refCfg().sound||{},idleWave=(Math.sin(ts*.0067)+.43*Math.sin(ts*.0173+1.2)+.19*Math.sin(ts*.041))/1.62,idle=idleBase*(1+(idleSnd.idleJitter??.008)*idleWave),limit=actualLimiterRpm(),I=effectiveInertia(),d=driveCfg();
+  let rpm=Math.max(120,state.rpm),omega=rpm*Math.PI*2/60,full=dynoAt(Math.max(rpm,idle*.7)).tq;
+  const throttleTorque=full*Math.pow(thr,.72),idleErr=idle-rpm;
+  const idleControl=(thr<.08&&rpm<idle*1.22)?clamp(idleErr*.018+frictionTorque(rpm)+pumpingTorque(rpm,0)*.72,0,full*.42):0;
+  const friction=frictionTorque(rpm),pumping=pumpingTorque(rpm,thr);let limiterFactor=1;
+  const snd=refCfg().sound||{},limDrop=snd.limiterDrop??(refCfg().twoStroke?260:140);
+  if(state.limiter==='soft'){state.limiterActive=rpm>=limit*.982;limiterFactor=1-smooth(limit*.955,limit,rpm)*.96;}
+  else{if(!state.limiterActive&&rpm>=limit)state.limiterActive=true;if(state.limiterActive&&rpm<=limit-limDrop)state.limiterActive=false;limiterFactor=state.limiterActive?0:1;}
+  let crankNet=(throttleTorque+idleControl)*limiterFactor*(1-state.shiftCut*.985)-friction-pumping;
+  if(state.mode==='stopping'){crankNet=-friction-pumpingTorque(rpm,0)*1.35;state.targetThrottle=0}
+  if(state.gear>0){
+    const ratio=totalRatio(state.gear),coupling=state.shifting?state.shiftCoupling:clamp((state.speed+.8)/(d.kind==='car'?2.4:3.2),0,1);
+    const road=roadLoadForce(state.speed);
+    if(coupling>.08){
+      const wheelTorque=crankNet*ratio*(d.eff??.92)*coupling;
+      const driveForce=wheelTorque/d.rearRadius;
+      const accel=(driveForce-road-brakeForce)/mass;
+      state.speed=Math.max(0,state.speed+accel*dt);
+      const coupled=Math.max(idle*.55,rpmForSpeed(state.gear,state.speed));
+      const lockRate=state.shifting?(state.shiftProfile?.type==='qs'?55:22):(d.kind==='car'?75:125);
+      state.rpm=lerp(state.rpm,coupled,1-Math.exp(-dt*lockRate));
+      rpm=state.rpm;omega=rpm*Math.PI*2/60;
+      const positiveDemand=Math.max(0,throttleTorque*limiterFactor-friction*.25);
+      state.load=clamp((positiveDemand/Math.max(1,full))*82+(road+Math.max(0,brakeForce*.08))*d.rearRadius/Math.max(1,full*ratio)*18,0,100);
+    }else{
+      const alpha=crankNet/Math.max(.012,I);omega=Math.max(0,omega+alpha*dt);rpm=omega*60/(Math.PI*2);state.rpm=rpm;
+      state.speed=Math.max(0,state.speed-(road+brakeForce)/mass*dt);
+      state.load=clamp(Math.max(thr*28,Math.abs(crankNet)/Math.max(1,full)*35),0,55);
+    }
+    const autoActive=state.autoShift||state.flybyActive;
+    if(autoActive&&!state.shifting&&state.gear<maxGear()&&state.rpm>=upshiftRpm())beginShift(state.gear+1);
+    if(state.autoShift&&!state.flybyActive&&!state.shifting&&state.gear>1){
+      const lowerRpm=rpmForSpeed(state.gear-1,state.speed),needDown=(thr>.28&&state.rpm<Math.max(refCfg().tqRpm*.68,idle*2.0))||(thr<.08&&state.rpm<idle*1.45);
+      if(needDown&&lowerRpm<limit*.90)beginShift(state.gear-1);
+    }
+  }else{
+    const alpha=crankNet/Math.max(.012,I);omega=Math.max(0,omega+alpha*dt);state.rpm=omega*60/(Math.PI*2);state.speed=Math.max(0,state.speed-(roadLoadForce(state.speed)+brakeForce)/mass*dt);state.load=clamp(thr*35,0,40);
+  }
+  if(state.rpm>limit+80)state.rpm=limit+80;
+  if(state.mode==='stopping'&&state.rpm<60){state.rpm=0;state.mode='off';state.running=false;announce('Engine stopped')}
+}
+
+
+let engineStartToken=0;
+
+async function startEngine(){
+  const token=++engineStartToken;
+  try{
+    await audio.resume();
+    $('#audioHelp').classList.remove('show');
+  }catch(err){
+    console.error('Audio start failed:',err);
+    $('#audioHelp').textContent='Audio could not start. Click anywhere on the page, then press START ENGINE again. If this browser blocks AudioWorklet on file://, ENGINELAB will automatically use its native Web Audio fallback.';
+    $('#audioHelp').classList.add('show');
+    announce('Audio could not start');
+    return;
+  }
+
+  if(state.running || state.mode==='cranking' || state.mode==='catching'){
+    if(state.flybyActive||state.flybyPending)stopFlyby(false);
+    state.running=false;
+    state.mode='stopping';
+    state.targetThrottle=0;
+    spaceDown=false;
+    announce('Engine stopping');
+    audio.pushConfig(true);
+    return;
+  }
+
+  state.running=true;
+  state.mode='cranking';
+  state.rpm=Math.max(0,Math.min(state.rpm,80));
+  state.targetThrottle=0;
+  announce('Starter engaged');
+  audio.pushConfig(true);
+
+  setTimeout(()=>{
+    if(token!==engineStartToken || !state.running || state.mode!=='cranking')return;
+    state.mode='catching';
+    state.rpm=Math.max(state.rpm,220);
+    announce('Engine catching');
+    audio.pushConfig(true);
+  },430);
+
+  setTimeout(()=>{
+    if(token!==engineStartToken || !state.running || state.mode!=='catching')return;
+    state.mode='running';
+    state.rpm=Math.max(state.rpm,idleRpm()*.92);
+    announce('Engine running');
+    audio.pushConfig(true);
+  },980);
+}
+
+async function restartEngine(){
+  ++engineStartToken;
+  state.running=false;
+  state.mode='off';
+  state.rpm=0;
+  state.targetThrottle=0;
+  spaceDown=false;
+  audio.pushConfig(true);
+  await new Promise(r=>setTimeout(r,70));
+  return startEngine();
+}
+
+function shift(delta){beginShift(clamp(state.gear+delta,0,maxGear()));}
+
+/* -------------------------- RENDERERS -------------------------- */
+function fitCanvas(c){const r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,CONFIG.render.maxDpr),w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h}const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);return {ctx:x,w:r.width,h:r.height,dpr}}
+function drawEngine(){const {ctx,w,h}=fitCanvas($('#engineCanvas'));ctx.clearRect(0,0,w,h);const cfg=layoutCfg(),cr=crankCfg(),phase=state.visualPhase;const center={x:w*.5,y:h*.64};ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(17,17,15,.12)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(w*.12,center.y+56);ctx.lineTo(w*.88,center.y+56);ctx.stroke();
+  ctx.fillStyle='#171714';ctx.strokeStyle='#090908';ctx.lineWidth=1;roundRect(ctx,center.x-w*.26,center.y+12,w*.52,70,18);ctx.fill();ctx.stroke();
+  const ev=cr.events,n=cfg.cyl,nowCycle=phase%cfg.cycle;
+  for(let i=0;i<n;i++){
+    const seq=Math.max(0,cr.order.indexOf(i+1));let bank=cr.banks?.[seq]||(cfg.type==='v'?(i%2?'R':'L'):'C');let axis={x:0,y:-1},anchor={x:center.x,y:center.y};
+    if(cfg.type==='inline'){const gap=Math.min(62,w*.42/Math.max(1,n-1));anchor.x=center.x+(i-(n-1)/2)*gap}
+    if(cfg.type==='v'){const side=bank==='L'?-1:1,ang=(cr.bankAngle||cfg.bankAngle||70)/2*Math.PI/180;axis={x:Math.sin(ang)*side,y:-Math.cos(ang)};anchor.x=center.x+side*(12+Math.floor(i/2)*8);anchor.y=center.y}
+    const fire=ev[seq%ev.length],theta=((phase-fire)%360)*Math.PI/180;drawCylinder(ctx,anchor,axis,theta,i,isNearAngle(nowCycle,fire,cfg.cycle));
+  }
+  ctx.strokeStyle='#3c3b36';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(center.x-w*.22,center.y);ctx.lineTo(center.x+w*.22,center.y);ctx.stroke();ctx.fillStyle='#111';ctx.beginPath();ctx.arc(center.x,center.y,22,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(center.x,center.y,10,0,Math.PI*2);ctx.stroke();
+}
+function drawCylinder(ctx,a,axis,theta,index,firing){const perp={x:-axis.y,y:axis.x},r=20,rod=72;const pin={x:a.x+perp.x*Math.sin(theta)*r+axis.x*Math.cos(theta)*r,y:a.y+perp.y*Math.sin(theta)*r+axis.y*Math.cos(theta)*r};const s=Math.sqrt(Math.max(1,rod*rod-r*r*Math.sin(theta)*Math.sin(theta)));const pistonDist=56+Math.cos(theta)*r+s-rod;const p={x:a.x+axis.x*pistonDist,y:a.y+axis.y*pistonDist};const head={x:a.x+axis.x*126,y:a.y+axis.y*126};
+  ctx.save();ctx.strokeStyle='#171714';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(pin.x,pin.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.lineWidth=1;ctx.strokeStyle='rgba(255,255,255,.28)';ctx.beginPath();ctx.moveTo(pin.x,pin.y);ctx.lineTo(p.x,p.y);ctx.stroke();
+  ctx.strokeStyle='rgba(17,17,15,.72)';ctx.lineWidth=1.5;const bw=35;ctx.beginPath();ctx.moveTo(p.x+perp.x*bw,p.y+perp.y*bw);ctx.lineTo(head.x+perp.x*bw,head.y+perp.y*bw);ctx.lineTo(head.x-perp.x*bw,head.y-perp.y*bw);ctx.lineTo(p.x-perp.x*bw,p.y-perp.y*bw);ctx.stroke();
+  ctx.fillStyle='#25251f';ctx.beginPath();ctx.arc(pin.x,pin.y,6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';const ph={x:p.x+axis.x*12,y:p.y+axis.y*12};ctx.save();ctx.translate(ph.x,ph.y);ctx.rotate(Math.atan2(axis.y,axis.x)+Math.PI/2);ctx.fillRect(-27,-9,54,18);ctx.restore();
+  if(firing){const grad=ctx.createRadialGradient(head.x,head.y,1,head.x,head.y,40);grad.addColorStop(0,'rgba(255,75,31,.95)');grad.addColorStop(.28,'rgba(255,75,31,.42)');grad.addColorStop(1,'rgba(255,75,31,0)');ctx.fillStyle=grad;ctx.beginPath();ctx.arc(head.x,head.y,40,0,Math.PI*2);ctx.fill()}
+  ctx.restore();}
+function isNearAngle(now,a,cycle){let d=Math.abs(now-a);d=Math.min(d,cycle-d);return d<10+state.rpm/1800}
+function roundRect(ctx,x,y,w,h,r){if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else{ctx.rect(x,y,w,h)}}
+function drawTach(){const {ctx,w,h}=fitCanvas($('#tachCanvas'));ctx.clearRect(0,0,w,h);const cx=w/2,cy=h*.91,R=Math.min(w*.42,h*.78),start=Math.PI*1.08,end=Math.PI*1.92;ctx.lineWidth=10;ctx.strokeStyle='rgba(17,17,15,.09)';ctx.beginPath();ctx.arc(cx,cy,R,start,end);ctx.stroke();const redStart=lerp(start,end,.86);ctx.strokeStyle='rgba(255,75,31,.72)';ctx.beginPath();ctx.arc(cx,cy,R,redStart,end);ctx.stroke();ctx.lineWidth=1;ctx.strokeStyle='rgba(17,17,15,.36)';for(let i=0;i<=10;i++){const a=lerp(start,end,i/10),r1=R-14,r2=R+1;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke()}const p=clamp(state.rpm/state.redline,0,1.03),a=lerp(start,end,p);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,0);ctx.lineTo(R-11,0);ctx.stroke();ctx.restore();ctx.fillStyle='#111';ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();$('#shiftLight').classList.toggle('on',state.running&&state.rpm>state.redline*.92)}
+function drawAnalyser(){const sc=fitCanvas($('#scopeCanvas')),sp=fitCanvas($('#spectrumCanvas'));const sctx=sc.ctx,pctx=sp.ctx;sctx.clearRect(0,0,sc.w,sc.h);pctx.clearRect(0,0,sp.w,sp.h);sctx.strokeStyle='rgba(17,17,15,.11)';sctx.beginPath();sctx.moveTo(0,sc.h/2);sctx.lineTo(sc.w,sc.h/2);sctx.stroke();if(!audio.analyser)return;const n=audio.analyser.fftSize,time=new Uint8Array(n),freq=new Uint8Array(audio.analyser.frequencyBinCount);audio.analyser.getByteTimeDomainData(time);audio.analyser.getByteFrequencyData(freq);sctx.strokeStyle='#111';sctx.lineWidth=1;sctx.beginPath();for(let i=0;i<n;i+=4){const x=i/(n-1)*sc.w,y=(time[i]/255)*sc.h;i?sctx.lineTo(x,y):sctx.moveTo(x,y)}sctx.stroke();const bins=Math.min(86,freq.length);for(let i=0;i<bins;i++){const idx=Math.floor(Math.pow(i/(bins-1),2)*Math.min(freq.length-1,700)),v=freq[idx]/255,x=i/bins*sp.w,bw=sp.w/bins*.78,hh=v*sp.h*.82;pctx.fillStyle=i>bins*.66?'rgba(255,75,31,.72)':'rgba(17,17,15,.72)';pctx.fillRect(x,sp.h-hh,bw,hh)}}
+function drawDyno(){const {ctx,w,h}=fitCanvas($('#dynoCanvas'));ctx.clearRect(0,0,w,h);const pad={l:28,r:12,t:8,b:20},iw=w-pad.l-pad.r,ih=h-pad.t-pad.b;ctx.strokeStyle='rgba(17,17,15,.1)';ctx.lineWidth=1;for(let i=0;i<=4;i++){const y=pad.t+ih*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke()}const pts=[];let maxT=1,maxP=1;for(let rpm=500;rpm<=state.redline;rpm+=Math.max(100,state.redline/80)){const d=dynoAt(rpm);pts.push({rpm,...d});maxT=Math.max(maxT,d.tq);maxP=Math.max(maxP,d.hp)}const line=(key,max,accent)=>{ctx.strokeStyle=accent?'#ff4b1f':'#111';ctx.lineWidth=accent?1.4:1.2;ctx.beginPath();pts.forEach((p,i)=>{const x=pad.l+(p.rpm/state.redline)*iw,y=pad.t+ih-(p[key]/max)*ih*.9;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()};line('tq',maxT,false);line('hp',maxP,true);const x=pad.l+clamp(state.rpm/state.redline,0,1)*iw;ctx.strokeStyle='rgba(17,17,15,.28)';ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ih);ctx.stroke();ctx.setLineDash([]);ctx.font='8px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');ctx.fillStyle='#77756e';ctx.fillText('TORQUE',pad.l,pad.t+8);ctx.fillStyle='#ff4b1f';ctx.fillText('POWER',pad.l+48,pad.t+8)}
+function renderFlybyTrack(){
+  const el=$('#flybyTrack');if(!el)return;
+  const existing=[...el.querySelectorAll('.flyby-bike')];while(existing.length<3){const d=document.createElement('span');d.className='flyby-bike';el.appendChild(d);existing.push(d)}
+  const staged=[state.flybyBike1,state.flybyBike2,state.flybyBike3].slice(0,Math.round(state.flybyCount));const bikes=state.flybyActive?state.flybyBikes:staged.map((name,i)=>({name,x:-92+i*(184/Math.max(1,staged.length-1)),offset:state.flybyOffset,distance:99}));
+  existing.forEach((d,i)=>{const b=bikes[i];if(!b){d.style.opacity='0';return;}d.style.opacity='1';const x=clamp(50+b.x/3.4,4,96),y=clamp(50-(b.offset-state.flybyOffset)*1.2,22,78);d.style.left=x+'%';d.style.top=y+'%';d.classList.toggle('near',state.flybyActive&&b.distance<28)});
+  const badge=$('#flybySceneBadge');if(badge)badge.textContent=`${Math.round(state.flybyCount)}-BIKE MIX · ${state.flybySpeed} KM/H`;
+}
+function renderText(){
+  const cc=displacement(),pk=dynoPeak(),r=refCfg(),rec=recommendedRedline(),mps=meanPistonSpeed(state.redline),ints=firingIntervals();
+  $('#engineName').textContent=`${Math.round(cc).toLocaleString()} cc · ${layoutCfg().label} · ${crankCfg().label}`;
+  $('#powerEstimate').textContent=`SIM ${Math.round(pk.hp)} hp @ ${Math.round(pk.hpRpm/50)*50} rpm · ${Math.round(pk.tq)} Nm @ ${Math.round(pk.tqRpm/50)*50}`;
+  const drv=driveCfg(),shiftLabel=drv.shiftType==='qs'?'quickshift up/down':drv.shiftType==='seamless'?'seamless race gearbox':drv.shiftType==='car-manual'?'H-pattern manual':'sequential manual';const approx=crankCfg().approx||r.approx?' · <strong>PUBLIC DATA LIMIT: acoustic proxy where Aprilia does not publish the figure</strong>':'';$('#referenceNote').innerHTML=`CALIBRATION · <strong>${r.model}</strong> · firing order ${crankCfg().order.join('–')} · intervals ${ints.join(' / ')}° · drivetrain ${drv.label} · ${shiftLabel} · ${r.note||''}${approx}`;
+  $('#ccReadout').innerHTML=`${Math.round(cc).toLocaleString()} <small>cc</small>`;
+  $('#torqueReadout').innerHTML=`${Math.round(pk.tq)} <small>Nm</small>`;
+  $('#hpReadout').innerHTML=`${Math.round(pk.hp)} <small>hp</small>`;
+  $('#pistonReadout').innerHTML=`${meanPistonSpeed().toFixed(1)} <small>m/s</small>`;
+  $('#fireHzReadout').innerHTML=`${firingRate().toFixed(1)} <small>Hz</small>`;
+  $('#rpmReadout').textContent=Math.round(state.rpm).toLocaleString();$('#throttlePct').textContent=`${Math.round(state.throttle)}%`;$('#loadReadout').textContent=`${Math.round(state.load)}%`;$('#gearReadout').textContent=state.gear||'N';$('#speedReadout').textContent=`${Math.round(state.speed*3.6)} km/h`;$('#gearBadge').innerHTML=`${state.gear||'N'} · ${Math.round(state.speed*3.6)} km/h ${state.shifting?`<span class="shift-indicator active">· SHIFT ${Math.max(0,Math.round((state.shiftDuration-state.shiftElapsed)*1000))} ms</span>`:''}`;
+  $('#statusDot').classList.toggle('running',state.mode!=='off');$('#engineState').textContent=state.mode==='off'?'ENGINE OFF':state.mode==='cranking'?'CRANKING':state.mode==='catching'?'CATCHING':state.mode==='stopping'?'WINDING DOWN':'ENGINE RUNNING';$('#startBtn').classList.toggle('running',state.running);$('#startBtn span').textContent=state.running?'STOP ENGINE':'START ENGINE';$('#throttleFill').style.height=state.throttle+'%';$('#throttleLine').style.bottom=`calc(${state.throttle}% - 1px)`;$('#throttlePad').setAttribute('aria-valuenow',Math.round(state.throttle));
+  $('#keyThrottle')?.classList.toggle('active',spaceDown);$('#keyBrake')?.classList.toggle('active',state.brakeInput>.05);
+  const fb=$('#flybyReadout');if(fb){if(state.flybyActive){const phase=state.flybyX<0?'APPROACHING':'RECEDING';fb.innerHTML=`${phase} · closest ${state.flybyDistance.toFixed(1)} m · Doppler ×${state.flybyDoppler.toFixed(3)} · ${state.flybyBikes.map(b=>b.name).join(' / ')}`;}else if(state.flybyPending)fb.textContent='ENGINE STARTING · FLYBY ARMED';else fb.textContent='Pack staged · Doppler, propagation delay, air loss, ground reflection + road noise';}
+  const fbb=$('#flybyBtn');if(fbb){fbb.classList.toggle('active',state.flybyActive||state.flybyPending);fbb.textContent=(state.flybyActive||state.flybyPending)?'STOP FLYBY':'START MIXED FLYBY';}
+  const guide=$('#redlineGuidance'); const bad=state.redline>rec;guide.classList.toggle('warn',bad);guide.innerHTML=`RECOMMENDED <strong>${rec.toLocaleString()} rpm</strong> · selected ${mps.toFixed(1)} m/s · reference ${referenceMps().toFixed(1)} m/s${bad?' · ABOVE CALIBRATED LIMIT':''}`;
+}
+
+
+function loop(ts){
+  const dt=Math.min(.05,(ts-lastTs)/1000||.016);
+  lastTs=ts;
+  simulate(dt,ts);
+  updateFlyby(dt);
+  state.visualPhase=(state.visualPhase+(state.rpm/60)*360*dt)%layoutCfg().cycle;
+  renderText();
+  renderFlybyTrack();
+  drawEngine();
+  drawTach();
+  drawDyno();
+  drawAnalyser();
+  requestAnimationFrame(loop);
+}
+
+
+/* -------------------------- UI -------------------------- */
+const sliderIds=['bore','stroke','compression','cam','flywheel','redline','muffling','intake','exhaustMix','intakeMix','mechanicalMix','reverbAmount','flybySpeed','flybyOffset','flybyCount','flybySpread'];
+function fillRange(el){const p=(+el.value-+el.min)/(+el.max-+el.min)*100;el.style.setProperty('--fill',p+'%')}
+function syncUI(){ensureCrank();state.flybyCount=clamp(Math.round(state.flybyCount||1),1,3);renderArchitectureButtons();const rr=refCfg().redlineRange;$('#redline').min=rr[0];$('#redline').max=rr[1];state.redline=clamp(state.redline,rr[0],rr[1]);sliderIds.forEach(id=>{const el=$('#'+id);el.value=state[id];fillRange(el)});$('#boreVal').textContent=`${(+state.bore).toFixed(1)} mm`;$('#strokeVal').textContent=`${(+state.stroke).toFixed(1)} mm`;$('#compressionVal').textContent=refCfg().compressionDisplay||`${(+state.compression).toFixed(1)}:1`;$('#camVal').textContent=`${state.cam}%`;$('#flywheelVal').textContent=`${state.flywheel}%`;$('#redlineVal').textContent=`${(+state.redline).toLocaleString()} rpm`;$('#mufflingVal').textContent=`${state.muffling}%`;$('#intakeVal').textContent=`${state.intake}%`;$('#exhaustMixVal').textContent=state.exhaustMix;$('#intakeMixVal').textContent=state.intakeMix;$('#mechanicalMixVal').textContent=state.mechanicalMix;$('#reverbAmountVal').textContent=state.reverbAmount+'%';$('#flybySpeedVal').textContent=state.flybySpeed+' km/h';$('#flybyOffsetVal').textContent=state.flybyOffset+' m';$('#flybyCountVal').textContent=Math.round(state.flybyCount);$('#flybySpreadVal').textContent=state.flybySpread+' m';['flybyBike1','flybyBike2','flybyBike3'].forEach((id,i)=>{const el=$('#'+id);if(el){el.value=state[id];el.disabled=i>=Math.round(state.flybyCount)}});$$('#listenerGrid button').forEach(b=>b.classList.toggle('active',b.dataset.listener===state.listener));$$('#reverbGrid button').forEach(b=>b.classList.toggle('active',b.dataset.reverb===state.reverbEnv));syncGearSelect();$('#autoShiftBtn').classList.toggle('active',state.autoShift);$$('#limiterGrid button').forEach(b=>b.classList.toggle('active',b.dataset.limiter===state.limiter))}
+function renderArchitectureButtons(){
+  const lg=$('#layoutGrid');lg.innerHTML='';
+  const activeRef=crankCfg().ref;
+  Object.entries(PRESETS).forEach(([name,p])=>{const ref=LAYOUTS[p.layout].cranks[p.crank].ref;const b=document.createElement('button');b.textContent=name;b.className=ref===activeRef?'active':'';b.onclick=()=>{applyConfig(p,{morph:true});toast(name+' loaded.')};lg.appendChild(b)});
+  const cg=$('#crankGrid');cg.innerHTML='';const c=document.createElement('button');c.textContent=crankCfg().label;c.className='active';c.disabled=true;cg.appendChild(c);
+  const eg=$('#exhaustGrid');eg.innerHTML='';Object.entries(EXHAUSTS).forEach(([k,v])=>{const b=document.createElement('button');b.textContent=v.label;b.dataset.exhaust=k;b.className=k===state.exhaust?'active':'';b.onclick=()=>{state.exhaust=k;renderArchitectureButtons();audio.pushConfig(true);updateHash()};eg.appendChild(b)});
+}
+function bindUI(){
+  sliderIds.forEach(id=>{$('#'+id).addEventListener('input',e=>{state[id]=+e.target.value;fillRange(e.target);syncValueOnly(id);if(id==='reverbAmount')audio.setReverb(state.reverbEnv,state.reverbAmount);else if(!['flybySpeed','flybyOffset','flybyCount','flybySpread'].includes(id))audio.pushConfig();scheduleHash()})});
+  $('#startBtn').onclick=startEngine;$('#blipBtn').onclick=()=>{state.targetThrottle=100;clearTimeout(blipUntil);blipUntil=setTimeout(()=>state.targetThrottle=0,220)};
+  $('#randomBtn').onclick=randomize;$('#resetBtn').onclick=()=>applyConfig(base,{morph:true});$('#copyBtn').onclick=copySetup;$('#shareBtn').onclick=copyLink;$('#saveBtn').onclick=saveLocal;$('#loadBtn').onclick=loadLocal;
+  $('#gearSelect').onchange=e=>{const g=clamp(+e.target.value,0,maxGear());if(state.mode==='off'){state.gear=g;syncGearSelect()}else{if(!beginShift(g))syncGearSelect()}};$('#autoShiftBtn').onclick=()=>{state.autoShift=!state.autoShift;$('#autoShiftBtn').classList.toggle('active',state.autoShift);$('#autoShiftBtn').setAttribute('aria-pressed',String(state.autoShift))};
+  $$('#listenerGrid button').forEach(b=>b.onclick=()=>{if(state.flybyActive||state.flybyPending)stopFlyby(false);state.listener=b.dataset.listener;syncUI();audio.setListener(state.listener);scheduleHash()});
+  $$('#reverbGrid button').forEach(b=>b.onclick=()=>{state.reverbEnv=b.dataset.reverb;syncUI();audio.setReverb(state.reverbEnv,state.reverbAmount);scheduleHash()});
+  $('#flybyBtn').onclick=toggleFlyby;['flybyBike1','flybyBike2','flybyBike3'].forEach(id=>{$('#'+id).onchange=e=>{state[id]=e.target.value;scheduleHash();syncUI();}});
+  $$('#limiterGrid button').forEach(b=>b.onclick=()=>{state.limiter=b.dataset.limiter;syncUI();audio.pushConfig(true);scheduleHash()});
+  $('#snapA').onclick=()=>{state.abA=configSnapshot();toast('Snapshot A stored.')};$('#snapB').onclick=()=>{state.abB=configSnapshot();toast('Snapshot B stored.')};$('#useA').onclick=()=>{if(state.abA){state.activeAB='A';applyConfig(state.abA,{morph:true});markAB()}};$('#useB').onclick=()=>{if(state.abB){state.activeAB='B';applyConfig(state.abB,{morph:true});markAB()}};
+  $('#recordBtn').onclick=toggleRecord;$('#gamepadBtn').onclick=()=>{state.gamepad=!state.gamepad;$('#gamepadBtn').classList.toggle('active',state.gamepad);toast(state.gamepad?'Gamepad throttle enabled.':'Gamepad disabled.')};$('#midiBtn').onclick=enableMidi;
+  const pad=$('#throttlePad');pad.addEventListener('pointerdown',e=>{throttleDrag=true;pad.setPointerCapture(e.pointerId);setThrottleFromPointer(e)});pad.addEventListener('pointermove',e=>{if(throttleDrag)setThrottleFromPointer(e)});pad.addEventListener('pointerup',()=>throttleDrag=false);pad.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();state.targetThrottle=clamp(state.targetThrottle+(e.key==='ArrowUp'?5:-5),0,100)}});
+  addEventListener('keydown',e=>{
+    if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;
+    const k=e.key.toLowerCase();
+    if(e.code==='Space'){e.preventDefault();spaceDown=true;$('#keyThrottle')?.classList.add('active')}
+    if(k==='s'){e.preventDefault();brakeDown=true;$('#keyBrake')?.classList.add('active')}
+    if(k==='q'&&!e.repeat){e.preventDefault();$('#keyDownshift')?.classList.add('active');shift(-1)}
+    if(k==='e'&&!e.repeat){e.preventDefault();$('#keyUpshift')?.classList.add('active');shift(1)}
+    if(k==='r'&&!e.repeat){e.preventDefault();restartEngine()}
+    if(k==='m'&&!e.repeat){state.muted=!state.muted;audio.setMuted();toast(state.muted?'Muted':'Unmuted')}
+    if(e.key==='['&&!e.repeat)shift(-1);if(e.key===']'&&!e.repeat)shift(1);
+    if(e.key==='ArrowUp'){e.preventDefault();state.targetThrottle=clamp(state.targetThrottle+5,0,100)}
+    if(e.key==='ArrowDown'){e.preventDefault();state.targetThrottle=clamp(state.targetThrottle-5,0,100)}
+  });
+  addEventListener('keyup',e=>{
+    const k=e.key.toLowerCase();
+    if(e.code==='Space'){spaceDown=false;state.targetThrottle=0;$('#keyThrottle')?.classList.remove('active')}
+    if(k==='s'){brakeDown=false;$('#keyBrake')?.classList.remove('active')}
+    if(k==='q')$('#keyDownshift')?.classList.remove('active');
+    if(k==='e')$('#keyUpshift')?.classList.remove('active');
+  });
+  addEventListener('gamepadconnected',()=>toast('Gamepad connected. Enable GAMEPAD to use throttle.'));
+  setInterval(pollGamepad,30);
+}
+function syncValueOnly(id){const map={bore:()=>$('#boreVal').textContent=`${(+state.bore).toFixed(1)} mm`,stroke:()=>$('#strokeVal').textContent=`${(+state.stroke).toFixed(1)} mm`,compression:()=>$('#compressionVal').textContent=`${state.compression.toFixed(1)}:1`,cam:()=>$('#camVal').textContent=`${state.cam}%`,flywheel:()=>$('#flywheelVal').textContent=`${state.flywheel}%`,redline:()=>$('#redlineVal').textContent=`${state.redline.toLocaleString()} rpm`,muffling:()=>$('#mufflingVal').textContent=`${state.muffling}%`,intake:()=>$('#intakeVal').textContent=`${state.intake}%`,exhaustMix:()=>$('#exhaustMixVal').textContent=state.exhaustMix,intakeMix:()=>$('#intakeMixVal').textContent=state.intakeMix,mechanicalMix:()=>$('#mechanicalMixVal').textContent=state.mechanicalMix,reverbAmount:()=>$('#reverbAmountVal').textContent=state.reverbAmount+'%',flybySpeed:()=>$('#flybySpeedVal').textContent=state.flybySpeed+' km/h',flybyOffset:()=>$('#flybyOffsetVal').textContent=state.flybyOffset+' m',flybyCount:()=>$('#flybyCountVal').textContent=Math.round(state.flybyCount),flybySpread:()=>$('#flybySpreadVal').textContent=state.flybySpread+' m'};map[id]?.()}
+function setThrottleFromPointer(e){const r=$('#throttlePad').getBoundingClientRect();state.targetThrottle=clamp((1-(e.clientY-r.top)/r.height)*100,0,100)}
+function randomize(){const names=Object.keys(PRESETS),name=names[Math.floor(Math.random()*names.length)];applyConfig(PRESETS[name],{morph:true});toast(name+' loaded.')}
+let hashTimer;function scheduleHash(){clearTimeout(hashTimer);hashTimer=setTimeout(updateHash,250)}
+function morphTo(obj){const token=++morphToken,from=configSnapshot(),to={...from,...obj};if(to.layout!==state.layout){state.layout=to.layout;state.crank=to.crank;ensureCrank();renderArchitectureButtons()}const numeric=['bore','stroke','compression','cam','flywheel','redline','muffling','intake','exhaustMix','intakeMix','mechanicalMix','reverbAmount','flybySpeed','flybyOffset','flybyCount','flybySpread'];const start=performance.now(),dur=reduced?1:780;function frame(t){if(token!==morphToken)return;const p=clamp((t-start)/dur,0,1),e=1-Math.pow(1-p,3);numeric.forEach(k=>state[k]=lerp(+from[k]||+to[k],+to[k],e));if(p>.42){state.exhaust=to.exhaust;state.listener=to.listener||state.listener;state.reverbEnv=to.reverbEnv||state.reverbEnv}syncUI();audio.pushConfig();audio.setReverb(state.reverbEnv,state.reverbAmount);if(p<1)requestAnimationFrame(frame);else{Object.assign(state,to);syncUI();audio.pushConfig(true);updateHash()}}requestAnimationFrame(frame)}
+async function copySetup(){const text=JSON.stringify(configSnapshot(),null,2);try{await navigator.clipboard.writeText(text);toast('Setup JSON copied.')}catch{legacyCopy(text)}}
+async function copyLink(){updateHash();const url=location.href.split('#')[0]+'#'+encodeSetup();try{await navigator.clipboard.writeText(url);toast('Share URL copied.')}catch{legacyCopy(url)}}
+function legacyCopy(text){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copied.')}
+let sessionSavedSetup=null;
+function saveLocal(){
+  const payload=JSON.stringify(configSnapshot());
+  sessionSavedSetup=payload;
+  try{
+    localStorage.setItem('enginelab.saved',payload);
+    toast('Setup saved locally.');
+  }catch(err){
+    console.warn('Local storage unavailable; using session memory.',err);
+    toast('Setup saved for this session.');
+  }
+}
+function loadLocal(){
+  let saved=sessionSavedSetup;
+  try{saved=localStorage.getItem('enginelab.saved')||saved}catch(err){console.warn('Local storage unavailable; using session memory.',err)}
+  if(!saved)return toast('No saved setup yet.');
+  try{applyConfig(JSON.parse(saved),{morph:true});toast('Saved setup loaded.')}catch{toast('Saved setup is invalid.')}
+}
+function markAB(){['useA','useB'].forEach(id=>$('#'+id).classList.toggle('active',state.activeAB===id.slice(-1)))}
+function toggleRecord(){if(!state.recording){if(audio.startRecording()){state.recording=true;$('#recordBtn').classList.add('recording');$('#recordBtn').textContent='STOP + SAVE'}}else{state.recording=false;$('#recordBtn').classList.remove('recording');$('#recordBtn').textContent='REC WAV';audio.stopRecording()}}
+async function enableMidi(){if(!navigator.requestMIDIAccess)return toast('Web MIDI is not available here.');try{const m=await navigator.requestMIDIAccess();state.midi=true;$('#midiBtn').classList.add('active');for(const input of m.inputs.values())input.onmidimessage=e=>{const [status,cc,val]=e.data;if((status&0xF0)===0xB0){state.targetThrottle=val/127*100}};toast('MIDI CC → throttle enabled.')}catch{toast('MIDI permission was not granted.')}}
+function pollGamepad(){if(!state.gamepad)return;const gp=Array.from(navigator.getGamepads?.()||[]).find(Boolean);if(!gp)return;let v=gp.buttons?.[7]?.value;if(v==null||v===0){const a=gp.axes?.[5]??gp.axes?.[2]??-1;v=(a+1)/2}state.targetThrottle=clamp(v*100,0,100)}
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1700)}
+function announce(msg){$('#ariaLive').textContent=msg}
+
+function buildPresets(){const h=$('#presetButtons'),names=Object.keys(PRESETS);Object.entries(PRESETS).forEach(([name,p])=>{const b=document.createElement('button');b.className='preset';b.textContent=name;b.onclick=()=>{applyConfig(p,{morph:true});toast(name+' loaded.')};h.appendChild(b)});['flybyBike1','flybyBike2','flybyBike3'].forEach(id=>{const el=$('#'+id);el.innerHTML='';names.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o)});el.value=state[id]||names[0];});}
+function boot(){loadHash();ensureCrank();buildPresets();bindUI();syncUI();$('#audioHelp').classList.add('show');requestAnimationFrame(loop);addEventListener('visibilitychange',()=>{if(document.hidden){state.targetThrottle=0;spaceDown=false;brakeDown=false}})}
+boot();
+</script>
+</body>
+</html>
